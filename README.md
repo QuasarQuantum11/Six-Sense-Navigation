@@ -1,1 +1,1 @@
-# Six-Sense-Navigation
+# six-sense-navigation
