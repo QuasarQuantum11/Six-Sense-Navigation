@@ -45,15 +45,15 @@ export default async function StudentPage({
   }));
 
   return (
-    <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-4xl flex-col gap-6 py-16 px-6 sm:px-16">
+    <div className="flex flex-1 flex-col items-center bg-white">
+      <main className="flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:px-16">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+          <h1 className="text-2xl font-bold text-primary">
             {student.username}
           </h1>
           <Link
             href="/students"
-            className="text-sm font-medium text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+            className="text-sm font-semibold text-accent hover:text-accent-dark"
           >
             ← Back to students
           </Link>

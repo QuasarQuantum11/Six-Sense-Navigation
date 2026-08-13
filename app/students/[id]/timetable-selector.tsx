@@ -22,9 +22,7 @@ export function TimetableSelector({
   const [selectedId, setSelectedId] = useState(timetables[0]?.id ?? "");
 
   if (timetables.length === 0) {
-    return (
-      <p className="text-zinc-500 dark:text-zinc-500">No timetables yet.</p>
-    );
+    return <p className="text-muted">No timetables yet.</p>;
   }
 
   const selected =
@@ -35,7 +33,7 @@ export function TimetableSelector({
       <div className="flex flex-col gap-2">
         <label
           htmlFor="timetable"
-          className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="text-sm font-semibold text-primary"
         >
           Timetable
         </label>
@@ -43,7 +41,7 @@ export function TimetableSelector({
           id="timetable"
           value={selected.id}
           onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full max-w-xs rounded-md border border-black/[.08] bg-white px-3 py-2 text-sm text-black dark:border-white/[.145] dark:bg-black dark:text-zinc-50"
+          className="w-full max-w-xs rounded-md border-2 border-primary bg-white px-3 py-2 text-sm text-foreground"
         >
           {timetables.map((t) => (
             <option key={t.id} value={t.id}>
@@ -53,35 +51,30 @@ export function TimetableSelector({
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-black/[.08] dark:border-white/[.145]">
+      <div className="overflow-x-auto rounded-lg border-2 border-primary">
         <table className="w-full min-w-full text-left text-sm">
-          <thead className="bg-black/[.03] dark:bg-white/[.06]">
+          <thead className="bg-panel">
             <tr>
-              <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">
+              <th className="px-4 py-3 font-semibold text-primary">
                 Position
               </th>
-              <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">
+              <th className="px-4 py-3 font-semibold text-primary">
                 Building
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-black/[.08] dark:divide-white/[.145]">
+          <tbody className="divide-y divide-primary/20">
             {selected.stops.map((stop) => (
               <tr key={`${selected.id}-${stop.position}-${stop.buildingId}`}>
-                <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                  {stop.position}
-                </td>
-                <td className="px-4 py-3 text-black dark:text-zinc-50">
+                <td className="px-4 py-3 text-muted">{stop.position}</td>
+                <td className="px-4 py-3 text-foreground">
                   {stop.buildingName}
                 </td>
               </tr>
             ))}
             {selected.stops.length === 0 && (
               <tr>
-                <td
-                  colSpan={2}
-                  className="px-4 py-6 text-center text-zinc-500 dark:text-zinc-500"
-                >
+                <td colSpan={2} className="px-4 py-6 text-center text-muted">
                   No buildings in this timetable.
                 </td>
               </tr>
