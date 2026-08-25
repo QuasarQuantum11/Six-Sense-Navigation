@@ -32,6 +32,33 @@ def get_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float
     except Exception as e:
         return {"error": str(e)}
 
+# Return the navigation graph for map overlay
+@app.get("/api/graph")
+def get_graph():
+    try:
+        edges = []
+
+        for u, v, data in G.edges(data=True):
+            geometry = data.get("geometry")
+
+            if geometry:
+                coords = list(geometry.coords)
+
+                # Graph geometry is (longitude, latitude)
+                edge_coords = [(lat, lon) for lon, lat in coords]
+                edges.append(edge_coords)
+
+            else:
+                # Fallback if an edge has no geometry
+                start = (G.nodes[u]['y'], G.nodes[u]['x'])
+                end = (G.nodes[v]['y'], G.nodes[v]['x'])
+                edges.append([start, end])
+
+        return {"edges": edges}
+
+    except Exception as e:
+        return {"error": str(e)}
+
 # Local runner (For local testing)
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -24,6 +24,25 @@ export default function Map() {
         let endMarker: L.Marker | null = null;
         let routeLayer: L.Polyline | null = null;
         
+        let graphLayer = L.layerGroup().addTo(map);
+
+        fetch("http://localhost:8000/api/graph")
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.edges) {
+                    data.edges.forEach((edge: [number[], number[]]) => {
+                        L.polyline(edge as L.LatLngExpression[], {
+                            color: "red",
+                            weight: 2,
+                            opacity: 0.6
+                        }).addTo(graphLayer);
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error("Failed to load navigation graph:", error);
+            });
+
         // Listener logic for user clicks on the map to set start and end points, and fetch the route from the API
         map.on('click', async (e) => {
             if (startMarker && endMarker) {
