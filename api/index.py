@@ -33,10 +33,17 @@ def get_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float
         return {"error": str(e)}
 
 # Return the navigation graph for map overlay
+# Return the navigation graph for map overlay
 @app.get("/api/graph")
 def get_graph():
     try:
         edges = []
+
+        # Clayton campus + nearby surrounding roads
+        SOUTH = -37.9185
+        NORTH = -37.8990
+        WEST = 145.1255
+        EAST = 145.1445
 
         for u, v, data in G.edges(data=True):
             geometry = data.get("geometry")
@@ -46,13 +53,20 @@ def get_graph():
 
                 # Graph geometry is (longitude, latitude)
                 edge_coords = [(lat, lon) for lon, lat in coords]
-                edges.append(edge_coords)
 
             else:
                 # Fallback if an edge has no geometry
-                start = (G.nodes[u]['y'], G.nodes[u]['x'])
-                end = (G.nodes[v]['y'], G.nodes[v]['x'])
-                edges.append([start, end])
+                edge_coords = [
+                    (G.nodes[u]['y'], G.nodes[u]['x']),
+                    (G.nodes[v]['y'], G.nodes[v]['x'])
+                ]
+
+            # Keep only edges within the desired map area
+            if any(
+                SOUTH <= lat <= NORTH and WEST <= lon <= EAST
+                for lat, lon in edge_coords
+            ):
+                edges.append(edge_coords)
 
         return {"edges": edges}
 
