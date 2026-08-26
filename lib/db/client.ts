@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { attachDatabasePool } from "@vercel/functions";
 import * as studentsSchema from "@/lib/students/schema";
 import * as timetablesSchema from "@/lib/timetables/schema";
+import * as feedbackSchema from "@/lib/feedback/schema";
 
 // Create the connection pool
 const pool = new Pool({
@@ -15,7 +16,7 @@ attachDatabasePool(pool);
 // Create Drizzle instance with the pool and schema
 // Combine all schema files here
 export const db = drizzle(pool, {
-  schema: { ...studentsSchema, ...timetablesSchema },
+  schema: { ...studentsSchema, ...timetablesSchema, ...feedbackSchema },
 });
 
 // Database connection check function
