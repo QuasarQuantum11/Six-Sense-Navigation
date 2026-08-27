@@ -31,6 +31,9 @@ export default async function StudentsPage() {
                   Profile Picture
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
+                  Walking Speed
+                </th>
+                <th className="px-4 py-3 font-semibold text-primary">
                   Password (hashed)
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
@@ -56,6 +59,9 @@ export default async function StudentsPage() {
                   <td className="px-4 py-3 text-muted">
                     {student.profilePicture ?? "—"}
                   </td>
+                  <td className="px-4 py-3 text-muted capitalize">
+                    {student.walkingSpeed}
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted">
                     {student.password.slice(0, 24)}…
                   </td>
@@ -77,7 +83,7 @@ export default async function StudentsPage() {
               ))}
               {allStudents.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={7} className="px-4 py-6 text-center text-muted">
                     No students yet.
                   </td>
                 </tr>
