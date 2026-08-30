@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { feedback } from "@/lib/feedback/schema";
+import { requireStudentOrAdmin } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function StudentFeedbackPage({
   params,
 }: PageProps<"/students/[id]/feedback">) {
   const { id } = await params;
+  await requireStudentOrAdmin(id);
 
   const student = await db.query.students.findFirst({
     where: eq(students.id, id),

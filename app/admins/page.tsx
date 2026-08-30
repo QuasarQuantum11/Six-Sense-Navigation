@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { admins } from "@/lib/admins/schema";
+import { requireAdmin } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminsPage() {
+  await requireAdmin();
   const allAdmins = await db.select().from(admins).orderBy(admins.createdAt);
 
   return (
