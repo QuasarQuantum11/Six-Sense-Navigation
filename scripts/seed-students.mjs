@@ -12,9 +12,21 @@ async function hashPassword(password) {
 }
 
 const exampleStudents = [
-  { username: "alice", password: "alice-example-pass" },
-  { username: "bob", password: "bob-example-pass" },
-  { username: "carol", password: "carol-example-pass" },
+  {
+    username: "alice",
+    email: "alice@example.invalid",
+    password: "alice-example-pass",
+  },
+  {
+    username: "bob",
+    email: "bob@example.invalid",
+    password: "bob-example-pass",
+  },
+  {
+    username: "carol",
+    email: "carol@example.invalid",
+    password: "carol-example-pass",
+  },
 ];
 
 async function main() {
@@ -25,13 +37,13 @@ async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
   try {
-    for (const { username, password } of exampleStudents) {
+    for (const { username, email, password } of exampleStudents) {
       const hashed = await hashPassword(password);
       await pool.query(
-        `INSERT INTO students (username, password)
-         VALUES ($1, $2)
+        `INSERT INTO students (username, email, password)
+         VALUES ($1, $2, $3)
          ON CONFLICT (username) DO NOTHING`,
-        [username, hashed],
+        [username, email, hashed],
       );
       console.log(`Seeded student: ${username}`);
     }

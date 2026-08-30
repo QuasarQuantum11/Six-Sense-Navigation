@@ -5,7 +5,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 export default function Map() {
-
     // Initialise the map and set up event listeners for user interactions
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
@@ -24,9 +23,12 @@ export default function Map() {
         let endMarker: L.Marker | null = null;
         let routeLayer: L.Polyline | null = null;
         
-        let graphLayer = L.layerGroup().addTo(map);
+        const graphLayer = L.layerGroup().addTo(map);
+        const apiBaseUrl =
+            process.env.NEXT_PUBLIC_API_BASE_URL ??
+            (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
 
-        fetch("http://localhost:8000/api/graph")
+        fetch(`${apiBaseUrl}/api/graph`)
             .then((response) => response.json())
             .then((data) => {
                 if (data.edges) {
@@ -58,7 +60,7 @@ export default function Map() {
             } else {
             endMarker = L.marker(e.latlng).addTo(map);
             
-            const response = await fetch(`/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`);
+            const response = await fetch(`${apiBaseUrl}/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`);
             const data = await response.json();
 
             if (data.route) {
