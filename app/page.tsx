@@ -12,12 +12,20 @@ export default function Home() {
           Clayton campus, with routing that respects your accessibility
           preferences.
         </p>
-        <Link
-          href="/students"
-          className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
-        >
-          View Students
-        </Link>
+        <div className="flex gap-4 mt-4">
+          <Link
+            href="/map"
+            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
+          >
+            Open Map
+          </Link>
+          <Link
+            href="/students"
+            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
+          >
+            View Students
+          </Link>
+        </div>
       </main>
     </div>
   );
