@@ -30,8 +30,8 @@ export default function Map() {
             .then((response) => response.json())
             .then((data) => {
                 if (data.edges) {
-                    data.edges.forEach((edge: [number[], number[]]) => {
-                        L.polyline(edge as L.LatLngExpression[], {
+                    data.edges.forEach((edge: [[number, number], [number, number]]) => {
+                        L.polyline(edge, {
                             color: "red",
                             weight: 2,
                             opacity: 0.6
