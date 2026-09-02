@@ -28,7 +28,7 @@ export default function Map() {
         
         let graphLayer = L.layerGroup().addTo(map);
 
-        fetch("http://localhost:8000/api/graph")
+        fetch("https://six-sense-navigation-api.onrender.com/api/graph")
             .then((response) => response.json())
             .then((data) => {
                 if (data.edges) {
