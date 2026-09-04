@@ -1,0 +1,23 @@
+{
+    "G_N01": {
+        "floor": "G",
+        "type": "entrance",
+        "description": "Bus Loop Entrance",
+        "x_pixel": 1189.41,
+        "y_pixel": 370.24
+    },
+    "G_N02": {
+        "floor": "G",
+        "type": "entrance",
+        "description": "South Car Park Entrance",
+        "x_pixel": 830.95,
+        "y_pixel": 737.6
+    },
+    "G_N03": {
+        "floor": "G",
+        "type": "entrance",
+        "description": "LTB Lawn Entrance",
+        "x_pixel": 1543.42,
+        "y_pixel": 594.39
+    }
+}
