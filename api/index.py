@@ -15,7 +15,11 @@ app.add_middleware(
 )
 
 # Load the pre-saved file
-GRAPH_PATH = os.path.join(os.path.dirname(__file__), "monash_graph.graphml")
+GRAPH_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "components",
+    "monash_graph.graphml"
+)
 print("Loading saved Monash graph...")
 G = ox.load_graphml(GRAPH_PATH)
 print("Graph ready.")
