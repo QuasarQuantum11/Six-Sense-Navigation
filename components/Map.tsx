@@ -15,12 +15,15 @@ export default function Map() {
         if (!mapContainer.current) return;
 
         // Prevent the map from initializing twice in React
-        if (typeof window !== "undefined" && !mapInstance.current) {
-        const map = L.map(mapContainer.current).setView([-37.9083, 145.1380], 16);
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19,
-        }).addTo(map);
+        if (typeof window !== "undefined" && !mapInstance.current && mapContainer.current) {
+            const map = L.map(mapContainer.current).setView([-37.9083, 145.1380], 16);
+
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; OpenStreetMap contributors",
+                maxZoom: 20,
+            }).addTo(map);
+
+            mapInstance.current = map;
 
         let startMarker: L.Marker | null = null;
         let endMarker: L.Marker | null = null;
