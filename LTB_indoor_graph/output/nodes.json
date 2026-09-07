@@ -19,5 +19,684 @@
         "description": "LTB Lawn Entrance",
         "x_pixel": 1543.42,
         "y_pixel": 594.39
+    },
+    "G_N04": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 334.61,
+        "y_pixel": 666.44
+    },
+    "G_N05": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 380.87,
+        "y_pixel": 405.26
+    },
+    "G_N06": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 877.2,
+        "y_pixel": 674.77
+    },
+    "G_N07": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1055.99,
+        "y_pixel": 419.49
+    },
+    "G_N08": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1345.07,
+        "y_pixel": 458.63
+    },
+    "G_N09": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1402.89,
+        "y_pixel": 296.74
+    },
+    "G_N10": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1505.18,
+        "y_pixel": 314.53
+    },
+    "G_N11": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1491.83,
+        "y_pixel": 486.2
+    },
+    "G_N12": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1490.95,
+        "y_pixel": 682.78
+    },
+    "G_N13": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1288.14,
+        "y_pixel": 666.77
+    },
+    "G_N14": {
+        "floor": "G",
+        "type": "lift",
+        "description": "Main Lift",
+        "x_pixel": 1080.89,
+        "y_pixel": 682.78
+    },
+    "G_N15": {
+        "floor": "G",
+        "type": "stairs",
+        "description": "Main Stairway",
+        "x_pixel": 1420.68,
+        "y_pixel": 522.67
+    },
+    "G_N16": {
+        "floor": "G",
+        "type": "stairs",
+        "description": "Side Stairway",
+        "x_pixel": 1296.15,
+        "y_pixel": 487.09
+    },
+    "G_N17": {
+        "floor": "G",
+        "type": "stairs",
+        "description": "External Stairs 1",
+        "x_pixel": 428.9,
+        "y_pixel": 735.26
+    },
+    "G_N18": {
+        "floor": "G",
+        "type": "stairs",
+        "description": "External Stairs 2",
+        "x_pixel": 626.37,
+        "y_pixel": 375.91
+    },
+    "G_N19": {
+        "floor": "G",
+        "type": "stairs",
+        "description": "External Stairs 3",
+        "x_pixel": 1270.35,
+        "y_pixel": 390.14
+    },
+    "G_N20": {
+        "floor": "G",
+        "type": "room",
+        "description": "G01",
+        "x_pixel": 1405.55,
+        "y_pixel": 276.28
+    },
+    "G_N21": {
+        "floor": "G",
+        "type": "room",
+        "description": "G02",
+        "x_pixel": 1479.38,
+        "y_pixel": 294.07
+    },
+    "G_N22": {
+        "floor": "G",
+        "type": "room",
+        "description": "G03",
+        "x_pixel": 1515.85,
+        "y_pixel": 412.93
+    },
+    "G_N23": {
+        "floor": "G",
+        "type": "room",
+        "description": "Accessible Toilets",
+        "x_pixel": 1404.67,
+        "y_pixel": 344.44
+    },
+    "G_N24": {
+        "floor": "G",
+        "type": "room",
+        "description": "Male Toilets",
+        "x_pixel": 1416.9,
+        "y_pixel": 358.77
+    },
+    "G_N25": {
+        "floor": "G",
+        "type": "room",
+        "description": "Female Toilets",
+        "x_pixel": 1402.67,
+        "y_pixel": 366.78
+    },
+    "G_N26": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1386.66,
+        "y_pixel": 299.18
+    },
+    "G_N27": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1390.22,
+        "y_pixel": 674.54
+    },
+    "G_N28": {
+        "floor": "G",
+        "type": "room",
+        "description": "G31",
+        "x_pixel": 1472.05,
+        "y_pixel": 722.57
+    },
+    "G_N30": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1146.5,
+        "y_pixel": 687.88
+    },
+    "G_N31": {
+        "floor": "G",
+        "type": "room",
+        "description": "Nesso Cafe",
+        "x_pixel": 1000.62,
+        "y_pixel": 784.84
+    },
+    "G_N32": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1012.4,
+        "y_pixel": 676.22
+    },
+    "G_N33": {
+        "floor": "G",
+        "type": "stairs",
+        "description": "External Stairs 4",
+        "x_pixel": 894.1,
+        "y_pixel": 706.46
+    },
+    "G_N34": {
+        "floor": "G",
+        "type": "room",
+        "description": "G21",
+        "x_pixel": 1305.93,
+        "y_pixel": 608.62
+    },
+    "G_N35": {
+        "floor": "G",
+        "type": "room",
+        "description": "G23",
+        "x_pixel": 1043.53,
+        "y_pixel": 652.21
+    },
+    "G_N36": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 967.93,
+        "y_pixel": 586.38
+    },
+    "G_N37": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1289.03,
+        "y_pixel": 511.67
+    },
+    "G_N38": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 896.77,
+        "y_pixel": 395.14
+    },
+    "G_N39": {
+        "floor": "G",
+        "type": "room",
+        "description": "G81",
+        "x_pixel": 1099.57,
+        "y_pixel": 313.31
+    },
+    "G_N40": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 573.0,
+        "y_pixel": 390.7
+    },
+    "G_N41": {
+        "floor": "G",
+        "type": "lift",
+        "description": "External Lift",
+        "x_pixel": 574.77,
+        "y_pixel": 317.76
+    },
+    "G_N42": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 422.67,
+        "y_pixel": 352.45
+    },
+    "G_N43": {
+        "floor": "G",
+        "type": "room",
+        "description": "G60",
+        "x_pixel": 278.58,
+        "y_pixel": 322.21
+    },
+    "G_N44": {
+        "floor": "G",
+        "type": "room",
+        "description": "G61",
+        "x_pixel": 297.26,
+        "y_pixel": 319.54
+    },
+    "G_N45": {
+        "floor": "G",
+        "type": "room",
+        "description": "G62",
+        "x_pixel": 403.1,
+        "y_pixel": 321.32
+    },
+    "G_N46": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 308.82,
+        "y_pixel": 412.04
+    },
+    "G_N47": {
+        "floor": "G",
+        "type": "room",
+        "description": "G54",
+        "x_pixel": 397.77,
+        "y_pixel": 442.29
+    },
+    "G_N48": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 323.05,
+        "y_pixel": 513.45
+    },
+    "G_N49": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 322.16,
+        "y_pixel": 557.92
+    },
+    "G_N50": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 331.95,
+        "y_pixel": 600.62
+    },
+    "G_N51": {
+        "floor": "G",
+        "type": "room",
+        "description": "G58",
+        "x_pixel": 287.47,
+        "y_pixel": 525.01
+    },
+    "G_N52": {
+        "floor": "G",
+        "type": "room",
+        "description": "G57",
+        "x_pixel": 291.03,
+        "y_pixel": 598.84
+    },
+    "G_N53": {
+        "floor": "G",
+        "type": "room",
+        "description": "G56",
+        "x_pixel": 225.21,
+        "y_pixel": 690.45
+    },
+    "G_N54": {
+        "floor": "G",
+        "type": "room",
+        "description": "G55",
+        "x_pixel": 298.14,
+        "y_pixel": 691.34
+    },
+    "G_N55": {
+        "floor": "G",
+        "type": "room",
+        "description": "G53",
+        "x_pixel": 508.95,
+        "y_pixel": 730.48
+    },
+    "G_N56": {
+        "floor": "G",
+        "type": "room",
+        "description": "Informal Dining",
+        "x_pixel": 705.53,
+        "y_pixel": 692.23
+    },
+    "G_N57": {
+        "floor": "G",
+        "type": "room",
+        "description": "Noodle Plus",
+        "x_pixel": 638.82,
+        "y_pixel": 774.07
+    },
+    "G_N58": {
+        "floor": "G",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 748.22,
+        "y_pixel": 624.63
+    },
+    "G_N59": {
+        "floor": "G",
+        "type": "room",
+        "description": "Female Toilets",
+        "x_pixel": 651.27,
+        "y_pixel": 452.07
+    },
+    "G_N60": {
+        "floor": "G",
+        "type": "room",
+        "description": "Male Toilets",
+        "x_pixel": 679.73,
+        "y_pixel": 589.94
+    },
+    "G_N61": {
+        "floor": "G",
+        "type": "room",
+        "description": "Accessible Toilets",
+        "x_pixel": 690.41,
+        "y_pixel": 616.63
+    },
+    "1_N01": {
+        "floor": "1",
+        "type": "lift",
+        "description": "Main Lift",
+        "x_pixel": 1006.18,
+        "y_pixel": 685.12
+    },
+    "1_N02": {
+        "floor": "1",
+        "type": "lift",
+        "description": "External Lift",
+        "x_pixel": 495.61,
+        "y_pixel": 314.2
+    },
+    "1_N03": {
+        "floor": "1",
+        "type": "stairs",
+        "description": "Main Stairway",
+        "x_pixel": 1342.4,
+        "y_pixel": 525.01
+    },
+    "1_N04": {
+        "floor": "1",
+        "type": "stairs",
+        "description": "Side Stairway",
+        "x_pixel": 1205.42,
+        "y_pixel": 484.98
+    },
+    "1_N05": {
+        "floor": "1",
+        "type": "stairs",
+        "description": "External Stairs 1",
+        "x_pixel": 352.4,
+        "y_pixel": 732.26
+    },
+    "1_N06": {
+        "floor": "1",
+        "type": "stairs",
+        "description": "External Stairs 2",
+        "x_pixel": 551.65,
+        "y_pixel": 364.9
+    },
+    "1_N07": {
+        "floor": "1",
+        "type": "stairs",
+        "description": "External Stairs 3",
+        "x_pixel": 1222.32,
+        "y_pixel": 356.9
+    },
+    "1_N08": {
+        "floor": "1",
+        "type": "stairs",
+        "description": "External Stairs 4",
+        "x_pixel": 899.44,
+        "y_pixel": 763.39
+    },
+    "1_N09": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1023.97,
+        "y_pixel": 372.02
+    },
+    "1_N10": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 996.39,
+        "y_pixel": 208.35
+    },
+    "1_N11": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 686.85,
+        "y_pixel": 206.57
+    },
+    "1_N12": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 701.08,
+        "y_pixel": 378.24
+    },
+    "1_N13": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1134.26,
+        "y_pixel": 380.02
+    },
+    "1_N14": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1277.47,
+        "y_pixel": 431.61
+    },
+    "1_N15": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1469.6,
+        "y_pixel": 455.63
+    },
+    "1_N16": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1200.97,
+        "y_pixel": 688.67
+    },
+    "1_N17": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1450.92,
+        "y_pixel": 732.26
+    },
+    "1_N18": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1377.98,
+        "y_pixel": 721.59
+    },
+    "1_N19": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1361.97,
+        "y_pixel": 828.32
+    },
+    "1_N20": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 919.9,
+        "y_pixel": 762.5
+    },
+    "1_N21": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 932.35,
+        "y_pixel": 669.11
+    },
+    "1_N22": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 576.55,
+        "y_pixel": 163.88
+    },
+    "1_N23": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 578.33,
+        "y_pixel": 87.38
+    },
+    "1_N24": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 495.61,
+        "y_pixel": 167.44
+    },
+    "1_N25": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 379.98,
+        "y_pixel": 166.55
+    },
+    "1_N26": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 290.14,
+        "y_pixel": 170.99
+    },
+    "1_N27": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 192.3,
+        "y_pixel": 170.99
+    },
+    "1_N28": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 288.36,
+        "y_pixel": 263.5
+    },
+    "1_N29": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 284.8,
+        "y_pixel": 352.45
+    },
+    "1_N30": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 298.14,
+        "y_pixel": 380.02
+    },
+    "1_N31": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 287.47,
+        "y_pixel": 535.68
+    },
+    "1_N32": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 283.02,
+        "y_pixel": 621.07
+    },
+    "1_N33": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 282.13,
+        "y_pixel": 623.74
+    },
+    "1_N34": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 289.25,
+        "y_pixel": 699.35
+    },
+    "1_N35": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 181.62,
+        "y_pixel": 717.14
+    },
+    "1_N36": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 445.8,
+        "y_pixel": 721.59
+    },
+    "1_N37": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 534.75,
+        "y_pixel": 723.36
+    },
+    "1_N38": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 547.2,
+        "y_pixel": 645.09
+    },
+    "1_N39": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 532.08,
+        "y_pixel": 803.42
+    },
+    "1_N40": {
+        "floor": "1",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 613.02,
+        "y_pixel": 816.76
     }
 }

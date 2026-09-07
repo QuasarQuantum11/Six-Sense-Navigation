@@ -7,7 +7,7 @@ import os
 # SETTINGS
 # --------------------------------------------------
 
-FLOOR = "G"
+FLOOR = "1"
 
 IMAGE_PATH = f"floorplans/Floor {FLOOR}.png"
 OUTPUT_PATH = "output/nodes.json"
@@ -51,6 +51,21 @@ plt.ion()
 
 fig, ax = plt.subplots(figsize=(16, 11))
 ax.imshow(image)
+
+# Show existing nodes
+for node_id, node in nodes.items():
+    if node["floor"] == FLOOR:
+        x = node["x_pixel"]
+        y = node["y_pixel"]
+
+        ax.plot(x, y, "ro", markersize=5)
+        ax.text(
+            x + 8,
+            y,
+            node_id,
+            fontsize=8
+        )
+
 ax.set_title(
     "Click a navigation point.\n"
     "Close the window when you are finished."
