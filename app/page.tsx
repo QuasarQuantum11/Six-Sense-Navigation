@@ -25,6 +25,12 @@ export default function Home() {
           >
             View Students
           </Link>
+          <Link
+            href="/admins"
+            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
+          >
+            View Admins
+          </Link>
         </div>
       </main>
     </div>
