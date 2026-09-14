@@ -63,8 +63,11 @@ export default function Map() {
             } else {
             endMarker = L.marker(e.latlng).addTo(map);
             
-            const response = await fetch(`/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`);
+            console.log("ROUTE REQUEST STARTING");
+            const response = await fetch(`https://six-sense-navigation-api.onrender.com/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`);
+            console.log("ROUTE RESPONSE STATUS:", response.status);
             const data = await response.json();
+            console.log("ROUTE RESPONSE DATA:", data);
 
             if (data.route) {
                 routeLayer = L.polyline(data.route, {color: 'blue', weight: 5}).addTo(map);
