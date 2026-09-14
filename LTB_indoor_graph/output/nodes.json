@@ -1454,5 +1454,999 @@
         "description": "",
         "x_pixel": 643.27,
         "y_pixel": 697.57
+    },
+    "2_N45": {
+        "floor": "2",
+        "type": "room",
+        "description": "231",
+        "x_pixel": 1450.92,
+        "y_pixel": 749.16
+    },
+    "2_N46": {
+        "floor": "2",
+        "type": "room",
+        "description": "233",
+        "x_pixel": 1341.51,
+        "y_pixel": 837.22
+    },
+    "2_N47": {
+        "floor": "2",
+        "type": "room",
+        "description": "235",
+        "x_pixel": 1224.1,
+        "y_pixel": 820.32
+    },
+    "2_N48": {
+        "floor": "2",
+        "type": "room",
+        "description": "236",
+        "x_pixel": 1124.48,
+        "y_pixel": 806.98
+    },
+    "2_N49": {
+        "floor": "2",
+        "type": "room",
+        "description": "237",
+        "x_pixel": 1034.64,
+        "y_pixel": 796.3
+    },
+    "2_N50": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1371.75,
+        "y_pixel": 742.93
+    },
+    "2_N51": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1364.64,
+        "y_pixel": 796.3
+    },
+    "2_N52": {
+        "floor": "2",
+        "type": "room",
+        "description": "Kitchen",
+        "x_pixel": 1265.02,
+        "y_pixel": 745.6
+    },
+    "2_N53": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1231.22,
+        "y_pixel": 708.24
+    },
+    "2_N54": {
+        "floor": "2",
+        "type": "room",
+        "description": "Male Toilets",
+        "x_pixel": 1148.49,
+        "y_pixel": 709.13
+    },
+    "2_N55": {
+        "floor": "2",
+        "type": "room",
+        "description": "Accessible Toilets",
+        "x_pixel": 1119.14,
+        "y_pixel": 715.36
+    },
+    "2_N56": {
+        "floor": "2",
+        "type": "room",
+        "description": "Female Toilets",
+        "x_pixel": 1082.67,
+        "y_pixel": 697.57
+    },
+    "2_N57": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1458.03,
+        "y_pixel": 706.46
+    },
+    "2_N58": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1446.47,
+        "y_pixel": 378.24
+    },
+    "2_N59": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1381.54,
+        "y_pixel": 450.29
+    },
+    "2_N60": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1365.53,
+        "y_pixel": 415.6
+    },
+    "2_N61": {
+        "floor": "2",
+        "type": "room",
+        "description": "202",
+        "x_pixel": 1384.21,
+        "y_pixel": 380.02
+    },
+    "2_N62": {
+        "floor": "2",
+        "type": "room",
+        "description": "203",
+        "x_pixel": 1430.46,
+        "y_pixel": 257.27
+    },
+    "2_N63": {
+        "floor": "2",
+        "type": "room",
+        "description": "204",
+        "x_pixel": 1452.7,
+        "y_pixel": 311.53
+    },
+    "2_N64": {
+        "floor": "2",
+        "type": "room",
+        "description": "205",
+        "x_pixel": 1482.94,
+        "y_pixel": 388.92
+    },
+    "2_N65": {
+        "floor": "2",
+        "type": "room",
+        "description": "221",
+        "x_pixel": 1208.98,
+        "y_pixel": 577.49
+    },
+    "2_N66": {
+        "floor": "2",
+        "type": "room",
+        "description": "223",
+        "x_pixel": 905.66,
+        "y_pixel": 640.64
+    },
+    "2_N67": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1103.13,
+        "y_pixel": 366.68
+    },
+    "2_N68": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1080.89,
+        "y_pixel": 401.37
+    },
+    "2_N69": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 943.91,
+        "y_pixel": 113.18
+    },
+    "2_N70": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 984.83,
+        "y_pixel": 141.64
+    },
+    "2_N71": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 814.05,
+        "y_pixel": 109.62
+    },
+    "2_N72": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 814.05,
+        "y_pixel": 181.67
+    },
+    "2_N73": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 889.65,
+        "y_pixel": 198.57
+    },
+    "2_N74": {
+        "floor": "2",
+        "type": "room",
+        "description": "282",
+        "x_pixel": 843.4,
+        "y_pixel": 352.45
+    },
+    "2_N75": {
+        "floor": "2",
+        "type": "room",
+        "description": "Kitchen",
+        "x_pixel": 686.85,
+        "y_pixel": 179.0
+    },
+    "2_N76": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 679.73,
+        "y_pixel": 134.53
+    },
+    "2_N77": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 623.7,
+        "y_pixel": 172.77
+    },
+    "2_N78": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 544.53,
+        "y_pixel": 153.2
+    },
+    "2_N79": {
+        "floor": "2",
+        "type": "room",
+        "description": "284",
+        "x_pixel": 649.49,
+        "y_pixel": 343.55
+    },
+    "2_N80": {
+        "floor": "2",
+        "type": "room",
+        "description": "242",
+        "x_pixel": 651.27,
+        "y_pixel": 425.39
+    },
+    "2_N81": {
+        "floor": "2",
+        "type": "room",
+        "description": "243",
+        "x_pixel": 605.91,
+        "y_pixel": 423.61
+    },
+    "2_N82": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 357.74,
+        "y_pixel": 123.85
+    },
+    "2_N83": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 160.27,
+        "y_pixel": 116.74
+    },
+    "2_N84": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 208.31,
+        "y_pixel": 250.16
+    },
+    "2_N85": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 210.98,
+        "y_pixel": 354.23
+    },
+    "2_N86": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 210.09,
+        "y_pixel": 433.39
+    },
+    "2_N87": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 205.64,
+        "y_pixel": 533.01
+    },
+    "2_N88": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 202.97,
+        "y_pixel": 717.14
+    },
+    "2_N89": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 203.86,
+        "y_pixel": 615.74
+    },
+    "2_N90": {
+        "floor": "2",
+        "type": "room",
+        "description": "Accessible Toilets",
+        "x_pixel": 365.75,
+        "y_pixel": 333.77
+    },
+    "2_N91": {
+        "floor": "2",
+        "type": "room",
+        "description": "Female Toilet",
+        "x_pixel": 371.97,
+        "y_pixel": 315.98
+    },
+    "2_N92": {
+        "floor": "2",
+        "type": "room",
+        "description": "Male Toilet",
+        "x_pixel": 400.44,
+        "y_pixel": 315.09
+    },
+    "2_N93": {
+        "floor": "2",
+        "type": "room",
+        "description": "Kitchen",
+        "x_pixel": 403.1,
+        "y_pixel": 459.19
+    },
+    "2_N94": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 353.29,
+        "y_pixel": 380.02
+    },
+    "2_N95": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 460.03,
+        "y_pixel": 406.71
+    },
+    "2_N96": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 493.83,
+        "y_pixel": 444.07
+    },
+    "2_N97": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 524.07,
+        "y_pixel": 651.32
+    },
+    "2_N98": {
+        "floor": "2",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 494.72,
+        "y_pixel": 768.73
+    },
+    "3_N01": {
+        "floor": "3",
+        "type": "lift",
+        "description": "Main Lift",
+        "x_pixel": 988.39,
+        "y_pixel": 693.12
+    },
+    "3_N02": {
+        "floor": "3",
+        "type": "lift",
+        "description": "External Lift",
+        "x_pixel": 468.93,
+        "y_pixel": 305.31
+    },
+    "3_N03": {
+        "floor": "3",
+        "type": "stairs",
+        "description": "Main Stairway",
+        "x_pixel": 1409.11,
+        "y_pixel": 535.68
+    },
+    "3_N04": {
+        "floor": "3",
+        "type": "stairs",
+        "description": "Side Stairway",
+        "x_pixel": 838.06,
+        "y_pixel": 430.72
+    },
+    "3_N05": {
+        "floor": "3",
+        "type": "stairs",
+        "description": "External Stairs 1",
+        "x_pixel": 338.17,
+        "y_pixel": 731.37
+    },
+    "3_N06": {
+        "floor": "3",
+        "type": "stairs",
+        "description": "External Stairs 2",
+        "x_pixel": 534.75,
+        "y_pixel": 357.79
+    },
+    "3_N07": {
+        "floor": "3",
+        "type": "stairs",
+        "description": "External Stairs 3",
+        "x_pixel": 1183.18,
+        "y_pixel": 370.24
+    },
+    "3_N08": {
+        "floor": "3",
+        "type": "stairs",
+        "description": "External Stairs 4",
+        "x_pixel": 846.96,
+        "y_pixel": 678.0
+    },
+    "3_N09": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1421.57,
+        "y_pixel": 717.14
+    },
+    "3_N10": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1185.85,
+        "y_pixel": 681.56
+    },
+    "3_N11": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1269.46,
+        "y_pixel": 697.57
+    },
+    "3_N12": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1254.34,
+        "y_pixel": 807.87
+    },
+    "3_N13": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 902.11,
+        "y_pixel": 756.28
+    },
+    "3_N14": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 924.34,
+        "y_pixel": 661.1
+    },
+    "3_N15": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 658.39,
+        "y_pixel": 626.41
+    },
+    "3_N16": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1260.57,
+        "y_pixel": 431.61
+    },
+    "3_N17": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1377.98,
+        "y_pixel": 434.28
+    },
+    "3_N18": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1028.41,
+        "y_pixel": 364.01
+    },
+    "3_N19": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1011.51,
+        "y_pixel": 200.35
+    },
+    "3_N20": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 717.98,
+        "y_pixel": 362.23
+    },
+    "3_N21": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 723.32,
+        "y_pixel": 196.79
+    },
+    "3_N22": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 482.27,
+        "y_pixel": 195.9
+    },
+    "3_N23": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 473.37,
+        "y_pixel": 72.26
+    },
+    "3_N24": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 611.24,
+        "y_pixel": 372.91
+    },
+    "3_N25": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 525.85,
+        "y_pixel": 375.58
+    },
+    "3_N26": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 452.92,
+        "y_pixel": 376.47
+    },
+    "3_N27": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 507.17,
+        "y_pixel": 604.17
+    },
+    "3_N28": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 478.71,
+        "y_pixel": 724.25
+    },
+    "3_N29": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 276.8,
+        "y_pixel": 690.45
+    },
+    "3_N30": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 150.49,
+        "y_pixel": 695.79
+    },
+    "3_N31": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 278.58,
+        "y_pixel": 693.12
+    },
+    "3_N32": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 149.6,
+        "y_pixel": 525.01
+    },
+    "3_N33": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 275.02,
+        "y_pixel": 525.9
+    },
+    "3_N34": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 145.15,
+        "y_pixel": 369.35
+    },
+    "3_N35": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 274.13,
+        "y_pixel": 373.8
+    },
+    "3_N36": {
+        "floor": "3",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 249.22,
+        "y_pixel": 370.24
+    },
+    "3_N37": {
+        "floor": "3",
+        "type": "room",
+        "description": "383",
+        "x_pixel": 266.12,
+        "y_pixel": 82.94
+    },
+    "3_N38": {
+        "floor": "3",
+        "type": "room",
+        "description": "382",
+        "x_pixel": 428.9,
+        "y_pixel": 83.82
+    },
+    "3_N39": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 243.89,
+        "y_pixel": 318.65
+    },
+    "3_N40": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 217.2,
+        "y_pixel": 372.91
+    },
+    "3_N41": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 214.53,
+        "y_pixel": 484.98
+    },
+    "3_N42": {
+        "floor": "3",
+        "type": "room",
+        "description": "Kitchen",
+        "x_pixel": 255.45,
+        "y_pixel": 567.7
+    },
+    "3_N43": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 137.15,
+        "y_pixel": 291.96
+    },
+    "3_N44": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 135.37,
+        "y_pixel": 431.61
+    },
+    "3_N45": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 135.37,
+        "y_pixel": 550.8
+    },
+    "3_N46": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 206.53,
+        "y_pixel": 702.91
+    },
+    "3_N47": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 362.19,
+        "y_pixel": 670.0
+    },
+    "3_N48": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 287.47,
+        "y_pixel": 408.49
+    },
+    "3_N49": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 365.75,
+        "y_pixel": 524.12
+    },
+    "3_N50": {
+        "floor": "3",
+        "type": "room",
+        "description": "Accessible Toilets",
+        "x_pixel": 352.4,
+        "y_pixel": 331.99
+    },
+    "3_N51": {
+        "floor": "3",
+        "type": "room",
+        "description": "Female Toilets",
+        "x_pixel": 352.4,
+        "y_pixel": 286.63
+    },
+    "3_N52": {
+        "floor": "3",
+        "type": "room",
+        "description": "Male Toilets",
+        "x_pixel": 374.64,
+        "y_pixel": 301.75
+    },
+    "3_N53": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 627.25,
+        "y_pixel": 223.47
+    },
+    "3_N54": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1060.43,
+        "y_pixel": 200.35
+    },
+    "3_N55": {
+        "floor": "3",
+        "type": "room",
+        "description": "386",
+        "x_pixel": 548.09,
+        "y_pixel": 183.45
+    },
+    "3_N56": {
+        "floor": "3",
+        "type": "room",
+        "description": "387",
+        "x_pixel": 661.94,
+        "y_pixel": 164.77
+    },
+    "3_N57": {
+        "floor": "3",
+        "type": "room",
+        "description": "388",
+        "x_pixel": 754.45,
+        "y_pixel": 163.88
+    },
+    "3_N58": {
+        "floor": "3",
+        "type": "room",
+        "description": "389",
+        "x_pixel": 877.2,
+        "y_pixel": 180.78
+    },
+    "3_N59": {
+        "floor": "3",
+        "type": "room",
+        "description": "390",
+        "x_pixel": 972.38,
+        "y_pixel": 180.78
+    },
+    "3_N60": {
+        "floor": "3",
+        "type": "room",
+        "description": "381",
+        "x_pixel": 695.74,
+        "y_pixel": 294.63
+    },
+    "3_N61": {
+        "floor": "3",
+        "type": "room",
+        "description": "393",
+        "x_pixel": 746.45,
+        "y_pixel": 251.05
+    },
+    "3_N62": {
+        "floor": "3",
+        "type": "room",
+        "description": "392",
+        "x_pixel": 967.93,
+        "y_pixel": 360.45
+    },
+    "3_N63": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1052.43,
+        "y_pixel": 331.1
+    },
+    "3_N64": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 529.41,
+        "y_pixel": 613.96
+    },
+    "3_N65": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 596.12,
+        "y_pixel": 795.41
+    },
+    "3_N66": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 656.61,
+        "y_pixel": 353.34
+    },
+    "3_N67": {
+        "floor": "3",
+        "type": "room",
+        "description": "303",
+        "x_pixel": 1418.9,
+        "y_pixel": 253.72
+    },
+    "3_N68": {
+        "floor": "3",
+        "type": "room",
+        "description": "304",
+        "x_pixel": 1442.02,
+        "y_pixel": 307.98
+    },
+    "3_N69": {
+        "floor": "3",
+        "type": "room",
+        "description": "302",
+        "x_pixel": 1367.31,
+        "y_pixel": 378.24
+    },
+    "3_N70": {
+        "floor": "3",
+        "type": "room",
+        "description": "305",
+        "x_pixel": 1467.82,
+        "y_pixel": 387.14
+    },
+    "3_N71": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1434.91,
+        "y_pixel": 378.24
+    },
+    "3_N72": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1345.07,
+        "y_pixel": 420.05
+    },
+    "3_N73": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1455.37,
+        "y_pixel": 469.86
+    },
+    "3_N74": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1367.31,
+        "y_pixel": 453.85
+    },
+    "3_N75": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1339.73,
+        "y_pixel": 481.42
+    },
+    "3_N76": {
+        "floor": "3",
+        "type": "room",
+        "description": "321",
+        "x_pixel": 1197.41,
+        "y_pixel": 578.38
+    },
+    "3_N77": {
+        "floor": "3",
+        "type": "room",
+        "description": "323",
+        "x_pixel": 891.43,
+        "y_pixel": 635.31
+    },
+    "3_N78": {
+        "floor": "3",
+        "type": "room",
+        "description": "331",
+        "x_pixel": 1368.2,
+        "y_pixel": 728.7
+    },
+    "3_N79": {
+        "floor": "3",
+        "type": "room",
+        "description": "333",
+        "x_pixel": 1222.32,
+        "y_pixel": 822.1
+    },
+    "3_N80": {
+        "floor": "3",
+        "type": "room",
+        "description": "334",
+        "x_pixel": 1112.02,
+        "y_pixel": 806.98
+    },
+    "3_N81": {
+        "floor": "3",
+        "type": "room",
+        "description": "335",
+        "x_pixel": 1013.29,
+        "y_pixel": 791.86
+    },
+    "3_N82": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1250.78,
+        "y_pixel": 757.17
+    },
+    "3_N83": {
+        "floor": "3",
+        "type": "room",
+        "description": "Study Area",
+        "x_pixel": 1217.87,
+        "y_pixel": 705.58
+    },
+    "3_N84": {
+        "floor": "3",
+        "type": "room",
+        "description": "Studt Area",
+        "x_pixel": 1206.31,
+        "y_pixel": 792.74
+    },
+    "3_N85": {
+        "floor": "3",
+        "type": "room",
+        "description": "Male Toilets",
+        "x_pixel": 1131.59,
+        "y_pixel": 702.02
+    },
+    "3_N86": {
+        "floor": "3",
+        "type": "room",
+        "description": "Accessible Toilets",
+        "x_pixel": 1112.91,
+        "y_pixel": 712.69
+    },
+    "3_N87": {
+        "floor": "3",
+        "type": "room",
+        "description": "Female Toilets",
+        "x_pixel": 1072.89,
+        "y_pixel": 696.68
+    },
+    "3_N88": {
+        "floor": "3",
+        "type": "room",
+        "description": "Little Big Shot 3 Cafe",
+        "x_pixel": 1124.48,
+        "y_pixel": 663.77
     }
 }
