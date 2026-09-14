@@ -47,6 +47,13 @@ export default async function StudentFeedbackPage({
           </Link>
         </div>
 
+        <Link
+          href={`/students/${student.id}/feedback/new`}
+          className="self-start rounded-md bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-dark"
+        >
+          Submit feedback
+        </Link>
+
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
             <thead className="bg-panel">
