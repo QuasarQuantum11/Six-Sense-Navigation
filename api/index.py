@@ -40,6 +40,21 @@ LTB_CONNECTORS = {
     "G_N03": 611527849,  # LTB Lawn Entrance
 }
 
+# Build LTB indoor routing graph
+LTB_G = nx.Graph()
+
+for node_id, data in LTB_NODES.items():
+    LTB_G.add_node(node_id, **data)
+
+for edge in LTB_EDGES:
+    LTB_G.add_edge(
+        edge["from"],
+        edge["to"],
+        weight=edge["distance_pixels"]
+    )
+
+print(f"LTB routing graph ready: {LTB_G.number_of_nodes()} nodes, {LTB_G.number_of_edges()} edges")
+
 # Routing
 @app.get("/api/route")
 def get_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float):
