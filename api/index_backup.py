@@ -1,5 +1,4 @@
 import os
-import json
 import uvicorn 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,25 +19,6 @@ GRAPH_PATH = os.path.join(os.path.dirname(__file__), "monash_graph.graphml")
 print("Loading saved Monash graph...")
 G = ox.load_graphml(GRAPH_PATH)
 print("Graph ready.")
-
-# Load LTB indoor navigation graph
-LTB_NODES_PATH = os.path.join(os.path.dirname(__file__), "ltb_nodes.json")
-LTB_EDGES_PATH = os.path.join(os.path.dirname(__file__), "ltb_edges.json")
-
-with open(LTB_NODES_PATH) as f:
-    LTB_NODES = json.load(f)
-
-with open(LTB_EDGES_PATH) as f:
-    LTB_EDGES = json.load(f)
-
-print(f"LTB indoor graph ready: {len(LTB_NODES)} nodes, {len(LTB_EDGES)} edges")
-
-# LTB indoor-to-outdoor entrance connections
-LTB_CONNECTORS = {
-    "G_N01": 611527813,  # Bus Loop Entrance
-    "G_N02": 588089887,  # South Car Park Entrance
-    "G_N03": 611527849,  # LTB Lawn Entrance
-}
 
 # Routing
 @app.get("/api/route")
