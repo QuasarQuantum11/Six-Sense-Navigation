@@ -68,6 +68,10 @@ def get_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float
         return {"error": str(e)}
 
 # Basic indoor LTB routing
+@app.get("/api/indoor-nodes")
+def get_indoor_nodes():
+    return LTB_NODES
+
 @app.get("/api/indoor-route")
 def get_indoor_route(start_node: str, end_node: str):
     try:
