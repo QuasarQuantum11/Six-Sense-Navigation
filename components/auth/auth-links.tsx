@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 import { getSession } from "@/lib/auth/session";
+import { UserMenu } from "@/components/auth/user-menu";
 
 export async function AuthLinks() {
   const session = await getSession();
@@ -31,9 +32,11 @@ export async function AuthLinks() {
           Admins
         </Link>
       )}
-      <span className="text-sm text-muted">
-        {session.username} ({session.role})
-      </span>
+      <UserMenu
+        username={session.username}
+        role={session.role}
+        userId={session.userId}
+      />
       <form action={logout}>
         <button className="text-sm font-semibold text-accent hover:text-accent-dark" type="submit">
           Log out
