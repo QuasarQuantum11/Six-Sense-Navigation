@@ -9,7 +9,7 @@ const links = [
 
 export function Navbar() {
   return (
-    <header className="border-b-4 border-accent bg-white">
+    <header className="relative z-20 border-b-4 border-accent bg-white">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4 sm:px-16">
         <Link href="/" className="text-xl font-bold text-primary">
           Six-Sense Navigation
