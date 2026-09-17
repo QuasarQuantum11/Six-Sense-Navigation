@@ -112,7 +112,7 @@ export async function login(
     return { message: "Unable to log in right now. Please try again." };
   }
 
-  redirect(role === "admin" ? "/admins" : "/");
+  redirect(role === "admin" ? "/admins/feedback" : "/");
 }
 
 export async function logout(): Promise<void> {

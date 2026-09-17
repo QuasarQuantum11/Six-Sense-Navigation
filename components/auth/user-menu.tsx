@@ -51,16 +51,18 @@ export function UserMenu({
           >
             Profile
           </button>
-          {role === "student" && (
-            <Link
-              href={`/students/${userId}/feedback`}
-              role="menuitem"
-              className="block px-4 py-2 text-sm text-foreground hover:bg-panel"
-              onClick={() => setOpen(false)}
-            >
-              Feedback
-            </Link>
-          )}
+          <Link
+            href={
+              role === "admin"
+                ? "/admins/feedback"
+                : `/students/${userId}/feedback`
+            }
+            role="menuitem"
+            className="block px-4 py-2 text-sm text-foreground hover:bg-panel"
+            onClick={() => setOpen(false)}
+          >
+            Feedback
+          </Link>
         </div>
       )}
     </div>
