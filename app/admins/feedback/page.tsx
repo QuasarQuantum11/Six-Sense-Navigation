@@ -3,6 +3,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { feedback } from "@/lib/feedback/schema";
 import { requireAdmin } from "@/lib/auth/dal";
+import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +27,7 @@ export default async function AllFeedbackPage() {
       <main className="flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:px-16">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">All feedback</h1>
-          <Link
-            href="/admins"
-            className="text-sm font-semibold text-accent hover:text-accent-dark"
-          >
-            ← Back to admins
-          </Link>
+          <BackLink fallbackHref="/admins">← Back to admins</BackLink>
         </div>
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">

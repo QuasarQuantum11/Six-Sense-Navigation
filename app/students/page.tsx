@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { requireAdmin } from "@/lib/auth/dal";
+import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +15,7 @@ export default async function StudentsPage() {
       <main className="flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:px-16">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Students</h1>
-          <Link
-            href="/"
-            className="text-sm font-semibold text-accent hover:text-accent-dark"
-          >
-            ← Back home
-          </Link>
+          <BackLink fallbackHref="/">← Back home</BackLink>
         </div>
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">

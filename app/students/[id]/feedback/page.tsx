@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { feedback } from "@/lib/feedback/schema";
 import { requireStudentOrAdmin } from "@/lib/auth/dal";
+import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +42,9 @@ export default async function StudentFeedbackPage({
           <h1 className="text-2xl font-bold text-primary">
             Feedback from {student.username}
           </h1>
-          <Link
-            href={`/students/${student.id}`}
-            className="text-sm font-semibold text-accent hover:text-accent-dark"
-          >
+          <BackLink fallbackHref={`/students/${student.id}`}>
             ← Back to {student.username}
-          </Link>
+          </BackLink>
         </div>
 
         <Link
