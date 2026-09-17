@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-export default function Map() {
+export default function OutdoorMap() {
 
     // Initialise the map and set up event listeners for user interactions
     const mapContainer = useRef<HTMLDivElement>(null);

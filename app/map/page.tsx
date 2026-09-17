@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 // Dynamically import the map, disabling Server-Side Rendering
-const CampusMap = dynamic(() => import("@/components/Map"), {
+const CampusMap = dynamic(() => import("@/components/OutdoorMap"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-500 rounded-xl">
