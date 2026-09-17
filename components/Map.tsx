@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// Indoor navigation data returned by the LTB backend.
 type IndoorNode = {
     floor: string;
     type: string;
@@ -18,6 +19,7 @@ type IndoorRouteNode = IndoorNode & {
 
 const API_URL = "https://six-sense-navigation-api.onrender.com";
 
+// Indoor floor-plan images used to display the LTB route.
 const floorPlans: Record<string, string> = {
     G: "/ltb/Floor-G.png",
     "1": "/ltb/Floor-1.png",
@@ -26,9 +28,11 @@ const floorPlans: Record<string, string> = {
 };
 
 export default function Map() {
+    // Shared Leaflet map references used by outdoor and indoor workflows.
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
 
+    // Indoor navigation state: room list, selected destination, and floor route.
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
     const [destination, setDestination] = useState("");
     const [indoorRoute, setIndoorRoute] = useState<IndoorRouteNode[]>([]);
@@ -40,6 +44,7 @@ export default function Map() {
         if (!mapContainer.current) return;
 
         if (!mapInstance.current) {
+            // OUTDOOR MAP: initialise the Leaflet map and OpenStreetMap tiles.
             const map = L.map(mapContainer.current).setView(
                 [-37.9083, 145.1380],
                 16
@@ -56,6 +61,7 @@ export default function Map() {
             let endMarker: L.Marker | null = null;
             let routeLayer: L.Polyline | null = null;
 
+            // OUTDOOR MAP: load the walking graph and draw its edges.
             const graphLayer = L.layerGroup().addTo(map);
 
             fetch(`${API_URL}/api/graph`)
@@ -80,6 +86,7 @@ export default function Map() {
                     );
                 });
 
+            // INDOOR MAP: load LTB rooms and indoor graph nodes.
             fetch(`${API_URL}/api/indoor-nodes`)
                 .then((response) => response.json())
                 .then((data) => {
@@ -92,6 +99,7 @@ export default function Map() {
                     );
                 });
 
+            // OUTDOOR MAP: select points and calculate an outdoor route.
             map.on("click", async (e) => {
                 if (startMarker && endMarker) {
                     map.removeLayer(startMarker);
@@ -152,6 +160,7 @@ export default function Map() {
         }
     }, []);
 
+    // INDOOR MAP: prepare selectable LTB rooms and floors in the route.
     const roomNodes = Object.entries(indoorNodes)
         .filter(
             ([, node]) =>
@@ -163,6 +172,7 @@ export default function Map() {
         new Set(indoorRoute.map((node) => node.floor))
     );
 
+    // INDOOR MAP: calculate the outdoor-to-LTB route for the selected room.
     const routeToLTB = async () => {
         if (!mapInstance.current || !destination) return;
 
@@ -220,6 +230,7 @@ export default function Map() {
         }
     };
 
+    // INDOOR MAP: keep only the route points for the selected floor plan.
     const floorRoute = indoorRoute.filter(
         (node) => node.floor === selectedFloor
     );
@@ -236,6 +247,7 @@ export default function Map() {
                 width: "100vw",
             }}
         >
+            {/* OUTDOOR MAP: Leaflet renders the campus map in this container. */}
             <div
                 ref={mapContainer}
                 style={{
@@ -244,6 +256,7 @@ export default function Map() {
                 }}
             />
 
+            {/* INDOOR MAP: controls for selecting an LTB room and starting a route. */}
             <div
                 style={{
                     position: "absolute",
@@ -307,6 +320,7 @@ export default function Map() {
                 </button>
             </div>
 
+            {/* INDOOR MAP: display the selected LTB floor plan and route. */}
             {indoorRoute.length > 0 && (
                 <div
                     style={{
