@@ -1,10 +1,10 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { attachDatabasePool } from "@vercel/functions";
+import * as adminsSchema from "@/lib/admins/schema";
+import * as feedbackSchema from "@/lib/feedback/schema";
 import * as studentsSchema from "@/lib/students/schema";
 import * as timetablesSchema from "@/lib/timetables/schema";
-import * as feedbackSchema from "@/lib/feedback/schema";
-import * as adminsSchema from "@/lib/admins/schema";
 
 // Create the connection pool
 const pool = new Pool({
@@ -17,7 +17,12 @@ attachDatabasePool(pool);
 // Create Drizzle instance with the pool and schema
 // Combine all schema files here
 export const db = drizzle(pool, {
-  schema: { ...studentsSchema, ...timetablesSchema, ...feedbackSchema, ...adminsSchema },
+  schema: {
+    ...adminsSchema,
+    ...feedbackSchema,
+    ...studentsSchema,
+    ...timetablesSchema,
+  },
 });
 
 // Database connection check function

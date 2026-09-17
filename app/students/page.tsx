@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
+import { requireAdmin } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
+  await requireAdmin();
   const allStudents = await db.select().from(students).orderBy(students.createdAt);
 
   return (
@@ -34,9 +36,6 @@ export default async function StudentsPage() {
                   Walking Speed
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
-                  Password (hashed)
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
                   Created At
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">ID</th>
@@ -62,9 +61,6 @@ export default async function StudentsPage() {
                   <td className="px-4 py-3 text-muted capitalize">
                     {student.walkingSpeed}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted">
-                    {student.password.slice(0, 24)}…
-                  </td>
                   <td className="px-4 py-3 text-muted">
                     {new Date(student.createdAt).toLocaleString()}
                   </td>
@@ -83,7 +79,7 @@ export default async function StudentsPage() {
               ))}
               {allStudents.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted">
                     No students yet.
                   </td>
                 </tr>

@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { getSession } from "@/lib/auth/session";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSession();
   return (
     <div className="flex flex-1 flex-col items-center bg-white">
       <main className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-6 px-6 py-24 text-center sm:px-16">
@@ -19,18 +21,30 @@ export default function Home() {
           >
             Open Map
           </Link>
-          <Link
-            href="/students"
-            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
-          >
-            View Students
-          </Link>
-          <Link
-            href="/admins"
-            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
-          >
-            View Admins
-          </Link>
+          {session?.role === "student" && (
+            <Link
+              href={`/students/${session.userId}`}
+              className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
+            >
+              My Timetable
+            </Link>
+          )}
+          {session?.role === "admin" && (
+            <>
+              <Link
+                href="/students"
+                className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
+              >
+                View Students
+              </Link>
+              <Link
+                href="/admins"
+                className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
+              >
+                View Admins
+              </Link>
+            </>
+          )}
         </div>
       </main>
     </div>

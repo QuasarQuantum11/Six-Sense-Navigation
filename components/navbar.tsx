@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { AuthLinks } from "@/components/auth/auth-links";
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/students", label: "Students" },
+  { href: "/map", label: "Map" },
 ];
 
 export function Navbar() {
@@ -22,6 +24,9 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          <Suspense fallback={<span className="text-sm text-muted">Checking account…</span>}>
+            <AuthLinks />
+          </Suspense>
         </nav>
       </div>
     </header>

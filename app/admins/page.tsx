@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { admins } from "@/lib/admins/schema";
+import { requireAdmin } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminsPage() {
+  await requireAdmin();
   const allAdmins = await db.select().from(admins).orderBy(admins.createdAt);
 
   return (
@@ -28,7 +30,10 @@ export default async function AdminsPage() {
                   Username
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
-                  Password (hashed)
+                  Email
+                </th>
+                <th className="px-4 py-3 font-semibold text-primary">
+                  Email Verified
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
                   Created At
@@ -42,8 +47,11 @@ export default async function AdminsPage() {
                   <td className="px-4 py-3 font-semibold text-primary">
                     {admin.username}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted">
-                    {admin.password.slice(0, 24)}…
+                  <td className="px-4 py-3 text-muted">
+                    {admin.email}
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {admin.emailVerified ? "Yes" : "No"}
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {new Date(admin.createdAt).toLocaleString()}
@@ -55,7 +63,7 @@ export default async function AdminsPage() {
               ))}
               {allAdmins.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={5} className="px-4 py-6 text-center text-muted">
                     No admins yet.
                   </td>
                 </tr>

@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { timetableBuildings, timetables } from "@/lib/timetables/schema";
 import { TimetableSelector } from "./timetable-selector";
+import { requireStudentOrAdmin } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function StudentPage({
   params,
 }: PageProps<"/students/[id]">) {
   const { id } = await params;
+  const session = await requireStudentOrAdmin(id);
 
   const student = await db.query.students.findFirst({
     where: eq(students.id, id),
@@ -52,10 +54,10 @@ export default async function StudentPage({
             {student.username}
           </h1>
           <Link
-            href="/students"
+            href={session.role === "admin" ? "/students" : "/"}
             className="text-sm font-semibold text-accent hover:text-accent-dark"
           >
-            ← Back to students
+            ← Back {session.role === "admin" ? "to students" : "home"}
           </Link>
         </div>
 
