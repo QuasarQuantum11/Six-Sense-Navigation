@@ -64,7 +64,7 @@ export default function Map() {
             // OUTDOOR MAP: load the walking graph and draw its edges.
             const graphLayer = L.layerGroup().addTo(map);
 
-            fetch(`${API_URL}/api/graph`)
+            fetch("/api/graph")
                 .then((response) => response.json())
                 .then((data) => {
                     if (data.edges) {
@@ -127,7 +127,7 @@ export default function Map() {
                     console.log("ROUTE REQUEST STARTING");
 
                     const response = await fetch(
-                        `${API_URL}/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`
+                        `/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`
                     );
 
                     console.log(
