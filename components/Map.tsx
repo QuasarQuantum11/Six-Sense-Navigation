@@ -29,9 +29,9 @@ export default function Map() {
         let endMarker: L.Marker | null = null;
         let routeLayer: L.Polyline | null = null;
         
-        let graphLayer = L.layerGroup().addTo(map);
+        const graphLayer = L.layerGroup().addTo(map);
 
-        fetch("https://six-sense-navigation-api.onrender.com/api/graph")
+        fetch("/api/graph")
             .then((response) => response.json())
             .then((data) => {
                 if (data.edges) {
