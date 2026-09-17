@@ -3,3 +3,4 @@ uvicorn
 osmnx
 networkx
 psycopg2-binary
+scikit-learn

@@ -1,0 +1,146 @@
+[
+    {
+        "from": "G_N14",
+        "to": "1_N01",
+        "type": "lift",
+        "vertical": true
+    },
+    {
+        "from": "1_N01",
+        "to": "2_N01",
+        "type": "lift",
+        "vertical": true
+    },
+    {
+        "from": "2_N01",
+        "to": "3_N01",
+        "type": "lift",
+        "vertical": true
+    },
+    {
+        "from": "G_N41",
+        "to": "1_N02",
+        "type": "lift",
+        "vertical": true
+    },
+    {
+        "from": "1_N02",
+        "to": "2_N02",
+        "type": "lift",
+        "vertical": true
+    },
+    {
+        "from": "2_N02",
+        "to": "3_N02",
+        "type": "lift",
+        "vertical": true
+    },
+    {
+        "from": "G_N15",
+        "to": "1_N03",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "1_N03",
+        "to": "2_N03",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "2_N03",
+        "to": "3_N03",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "G_N16",
+        "to": "1_N04",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "1_N04",
+        "to": "2_N04",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "2_N04",
+        "to": "3_N04",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "G_N17",
+        "to": "1_N05",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "1_N05",
+        "to": "2_N05",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "2_N05",
+        "to": "3_N05",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "G_N18",
+        "to": "1_N06",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "1_N06",
+        "to": "2_N06",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "2_N06",
+        "to": "3_N06",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "G_N19",
+        "to": "1_N07",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "1_N07",
+        "to": "2_N07",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "2_N07",
+        "to": "3_N07",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "G_N33",
+        "to": "1_N08",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "1_N08",
+        "to": "2_N08",
+        "type": "stairs",
+        "vertical": true
+    },
+    {
+        "from": "2_N08",
+        "to": "3_N08",
+        "type": "stairs",
+        "vertical": true
+    }
+]

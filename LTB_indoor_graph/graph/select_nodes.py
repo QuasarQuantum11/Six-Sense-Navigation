@@ -7,7 +7,7 @@ import os
 # SETTINGS
 # --------------------------------------------------
 
-FLOOR = "G"
+FLOOR = "3"
 
 IMAGE_PATH = f"floorplans/Floor {FLOOR}.png"
 OUTPUT_PATH = "output/nodes.json"
@@ -18,33 +18,74 @@ OUTPUT_PATH = "output/nodes.json"
 
 image = Image.open(IMAGE_PATH)
 
-plt.figure(figsize=(16, 11))
-plt.imshow(image)
-plt.title(
-    "Click a navigation point.\n"
-    "Close the window when you are finished."
-)
-plt.axis("on")
-
 # --------------------------------------------------
 # LOAD EXISTING NODES
 # --------------------------------------------------
 
 if os.path.exists(OUTPUT_PATH):
-    with open(OUTPUT_PATH, "r") as file:
-        nodes = json.load(file)
+    try:
+        with open(OUTPUT_PATH, "r") as file:
+            nodes = json.load(file)
+    except json.JSONDecodeError:
+        nodes = {}
 else:
     nodes = {}
+
+# Find the next available node number for this floor
+existing_numbers = []
+
+for node_id in nodes:
+    if node_id.startswith(f"{FLOOR}_N"):
+        try:
+            existing_numbers.append(int(node_id.split("_N")[1]))
+        except ValueError:
+            pass
+
+node_number = max(existing_numbers, default=0) + 1
+
+# --------------------------------------------------
+# DISPLAY FLOOR PLAN
+# --------------------------------------------------
+
+plt.ion()
+
+fig, ax = plt.subplots(figsize=(16, 11))
+ax.imshow(image)
+
+# Show existing nodes
+for node_id, node in nodes.items():
+    if node["floor"] == FLOOR:
+        x = node["x_pixel"]
+        y = node["y_pixel"]
+
+        ax.plot(x, y, "ro", markersize=5)
+        ax.text(
+            x + 8,
+            y,
+            node_id,
+            fontsize=8
+        )
+
+ax.set_title(
+    "Click a navigation point.\n"
+    "Close the window when you are finished."
+)
+ax.set_xlabel("X pixel")
+ax.set_ylabel("Y pixel")
+
+plt.show(block=False)
+plt.pause(0.5)
 
 # --------------------------------------------------
 # SELECT NODES
 # --------------------------------------------------
 
-node_number = 1
-
 while True:
 
     print("\nClick a point on the floor plan.")
+
+    plt.draw()
+    plt.pause(0.1)
 
     points = plt.ginput(1, timeout=-1)
 
@@ -73,18 +114,16 @@ while True:
         "y_pixel": round(y, 2)
     }
 
+    # Save immediately
+    with open(OUTPUT_PATH, "w") as file:
+        json.dump(nodes, file, indent=4)
+
     print(f"Saved {node_id}")
+    print(f"Total nodes saved: {len(nodes)}")
 
     node_number += 1
 
-# --------------------------------------------------
-# SAVE NODES
-# --------------------------------------------------
-
-with open(OUTPUT_PATH, "w") as file:
-    json.dump(nodes, file, indent=4)
-
-plt.close()
+plt.close(fig)
 
 print("\nAll nodes saved to:")
 print(OUTPUT_PATH)

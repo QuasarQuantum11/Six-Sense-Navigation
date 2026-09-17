@@ -16,11 +16,7 @@ app.add_middleware(
 )
 
 # Load the pre-saved file
-GRAPH_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    "components",
-    "monash_graph.graphml"
-)
+GRAPH_PATH = os.path.join(os.path.dirname(__file__), "monash_graph.graphml")
 print("Loading saved Monash graph...")
 G = ox.load_graphml(GRAPH_PATH)
 print("Graph ready.")
@@ -72,10 +68,6 @@ def get_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float
         return {"error": str(e)}
 
 # Basic indoor LTB routing
-@app.get("/api/indoor-nodes")
-def get_indoor_nodes():
-    return LTB_NODES
-
 @app.get("/api/indoor-route")
 def get_indoor_route(start_node: str, end_node: str):
     try:
@@ -102,65 +94,6 @@ def get_indoor_route(start_node: str, end_node: str):
 
     except Exception as e:
         return {"error": str(e)}
-
-# Combined outdoor + indoor LTB routing
-@app.get("/api/ltb-route")
-def get_ltb_route(start_lat: float, start_lon: float, end_node: str):
-    try:
-        if end_node not in LTB_G:
-            return {"error": f"Unknown indoor destination: {end_node}"}
-
-        # Find the closest outdoor node to the starting location
-        outdoor_start = ox.distance.nearest_nodes(G, X=start_lon, Y=start_lat)
-
-        best_result = None
-
-        # Try each LTB entrance and choose the shortest combined route
-        for indoor_entrance, outdoor_node in LTB_CONNECTORS.items():
-            outdoor_path = nx.shortest_path(G, outdoor_start, outdoor_node, weight="length")
-            indoor_path = nx.shortest_path(LTB_G, indoor_entrance, end_node, weight="weight")
-
-            result = {
-                "entrance_node": indoor_entrance,
-                "outdoor_node": outdoor_node,
-                "outdoor_path": [(G.nodes[node]["y"], G.nodes[node]["x"]) for node in outdoor_path],
-                "indoor_path": [
-                    {
-                        "id": node_id,
-                        "floor": LTB_G.nodes[node_id].get("floor"),
-                        "type": LTB_G.nodes[node_id].get("type"),
-                        "description": LTB_G.nodes[node_id].get("description", ""),
-                        "x_pixel": LTB_G.nodes[node_id].get("x_pixel"),
-                        "y_pixel": LTB_G.nodes[node_id].get("y_pixel")
-                    }
-                    for node_id in indoor_path
-                ]
-            }
-
-            outdoor_distance = sum(G.edges[u, v, 0].get("length", 0) for u, v in zip(outdoor_path[:-1], outdoor_path[1:]))
-
-            indoor_distance_pixels = sum(
-                LTB_G.edges[u, v].get("weight", 0)
-                for u, v in zip(indoor_path[:-1], indoor_path[1:])
-            )
-
-            indoor_distance_m = indoor_distance_pixels / 14.2
-
-            result["outdoor_distance_m"] = outdoor_distance
-            result["indoor_distance_pixels"] = indoor_distance_pixels
-            result["indoor_distance_m"] = indoor_distance_m
-
-            comparison_score = outdoor_distance + indoor_distance_m
-
-            if best_result is None or comparison_score < best_result["comparison_score"]:
-                result["comparison_score"] = comparison_score
-                best_result = result
-
-        return best_result
-
-    except Exception as e:
-        return {"error": str(e)}
-
 
 # Return the navigation graph for map overlay
 # Return the navigation graph for map overlay
