@@ -52,13 +52,13 @@ export default function Map() {
 
             mapInstance.current = map;
 
-            let startMarker: L.Marker | null = null;
-            let endMarker: L.Marker | null = null;
-            let routeLayer: L.Polyline | null = null;
+        let startMarker: L.Marker | null = null;
+        let endMarker: L.Marker | null = null;
+        let routeLayer: L.Polyline | null = null;
+        
+        const graphLayer = L.layerGroup().addTo(map);
 
-            const graphLayer = L.layerGroup().addTo(map);
-
-            fetch(`${API_URL}/api/graph`)
+            fetch("/api/graph")
                 .then((response) => response.json())
                 .then((data) => {
                     if (data.edges) {
@@ -119,7 +119,7 @@ export default function Map() {
                     console.log("ROUTE REQUEST STARTING");
 
                     const response = await fetch(
-                        `${API_URL}/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`
+                        `/api/route?start_lat=${startMarker.getLatLng().lat}&start_lon=${startMarker.getLatLng().lng}&end_lat=${endMarker.getLatLng().lat}&end_lon=${endMarker.getLatLng().lng}`
                     );
 
                     console.log(

@@ -10,6 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "db:import-navigation": "python scripts/navigation/import-graph.py --apply --replace",
+    "db:import-navigation:dry-run": "python scripts/navigation/import-graph.py",
     "db:seed": "node scripts/seed-students.mjs && node scripts/seed-timetables.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
