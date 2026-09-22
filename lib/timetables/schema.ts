@@ -1,6 +1,25 @@
 import { relations } from "drizzle-orm";
-import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  time,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { students } from "@/lib/students/schema";
+
+export const dayOfWeek = pgEnum("day_of_week", [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+]);
 
 export const buildings = pgTable("buildings", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -32,6 +51,8 @@ export const timetableBuildings = pgTable(
       .notNull()
       .references(() => buildings.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
+    dayOfWeek: dayOfWeek("day_of_week"),
+    startTime: time("start_time"),
   },
   (table) => [
     uniqueIndex("timetable_buildings_timetable_id_position_idx").on(

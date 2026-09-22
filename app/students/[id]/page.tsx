@@ -43,6 +43,8 @@ export default async function StudentPage({
       position: tb.position,
       buildingId: tb.buildingId,
       buildingName: tb.building.name,
+      dayOfWeek: tb.dayOfWeek,
+      startTime: tb.startTime,
     })),
   }));
 
@@ -58,7 +60,7 @@ export default async function StudentPage({
           </BackLink>
         </div>
 
-        <TimetableSelector timetables={timetableOptions} />
+        <TimetableSelector studentId={id} timetables={timetableOptions} />
       </main>
     </div>
   );
