@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { submitFeedback } from "./actions";
+import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +27,9 @@ export default async function NewFeedbackPage({
       <main className="flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-16 sm:px-16">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Submit feedback</h1>
-          <Link
-            href={`/students/${student.id}/feedback`}
-            className="text-sm font-semibold text-accent hover:text-accent-dark"
-          >
+          <BackLink href={`/students/${student.id}/feedback`}>
             ← Back to feedback
-          </Link>
+          </BackLink>
         </div>
 
         <form

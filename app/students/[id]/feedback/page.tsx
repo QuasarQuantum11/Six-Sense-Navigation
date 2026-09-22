@@ -6,6 +6,7 @@ import { students } from "@/lib/students/schema";
 import { feedback } from "@/lib/feedback/schema";
 import { requireStudentOrAdmin } from "@/lib/auth/dal";
 import { FeedbackRowActions } from "@/components/feedback/feedback-row-actions";
+import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -42,12 +43,7 @@ export default async function StudentFeedbackPage({
           <h1 className="text-2xl font-bold text-primary">
             Feedback from {student.username}
           </h1>
-          <Link
-            href="/"
-            className="text-sm font-semibold text-accent hover:text-accent-dark"
-          >
-            ← Back home
-          </Link>
+          <BackLink href="/">← Back home</BackLink>
         </div>
 
         <Link

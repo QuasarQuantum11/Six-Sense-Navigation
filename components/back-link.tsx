@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 export function BackLink({
-  fallbackHref,
+  href,
   children,
 }: {
-  fallbackHref: string;
+  href?: string;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -16,10 +16,10 @@ export function BackLink({
     <button
       type="button"
       onClick={() => {
-        if (window.history.length > 1) {
-          router.back();
+        if (href) {
+          router.push(href);
         } else {
-          router.push(fallbackHref);
+          router.back();
         }
       }}
       className="text-sm font-semibold text-accent hover:text-accent-dark"

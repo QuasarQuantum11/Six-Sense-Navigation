@@ -14,7 +14,7 @@ export default async function AdminsPage() {
       <main className="flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:px-16">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Admins</h1>
-          <BackLink fallbackHref="/">← Back home</BackLink>
+          <BackLink href="/">← Back home</BackLink>
         </div>
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
