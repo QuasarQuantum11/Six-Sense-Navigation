@@ -1,10 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { timetableBuildings, timetables } from "@/lib/timetables/schema";
 import { TimetableSelector } from "./timetable-selector";
+import { requireStudentOrAdmin } from "@/lib/auth/dal";
+import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function StudentPage({
   params,
 }: PageProps<"/students/[id]">) {
   const { id } = await params;
+  const session = await requireStudentOrAdmin(id);
 
   const student = await db.query.students.findFirst({
     where: eq(students.id, id),
@@ -51,12 +53,9 @@ export default async function StudentPage({
           <h1 className="text-2xl font-bold text-primary">
             {student.username}
           </h1>
-          <Link
-            href="/students"
-            className="text-sm font-semibold text-accent hover:text-accent-dark"
-          >
-            ← Back to students
-          </Link>
+          <BackLink href={session.role === "admin" ? "/students" : "/"}>
+            ← Back {session.role === "admin" ? "to students" : "home"}
+          </BackLink>
         </div>
 
         <TimetableSelector timetables={timetableOptions} />

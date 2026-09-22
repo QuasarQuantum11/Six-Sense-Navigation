@@ -57,12 +57,14 @@ export default function Map() {
 
             mapInstance.current = map;
 
-            let startMarker: L.Marker | null = null;
-            let endMarker: L.Marker | null = null;
-            let routeLayer: L.Polyline | null = null;
-
-            // OUTDOOR MAP: load the walking graph and draw its edges.
-            const graphLayer = L.layerGroup().addTo(map);
+        let startMarker: L.Marker | null = null;
+        let endMarker: L.Marker | null = null;
+        let routeLayer: L.Polyline | null = null;
+        
+        const graphLayer = L.layerGroup().addTo(map);
+        const apiBaseUrl =
+            process.env.NEXT_PUBLIC_API_BASE_URL ??
+            (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
 
             fetch("/api/graph")
                 .then((response) => response.json())

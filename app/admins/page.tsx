@@ -1,29 +1,21 @@
-import Link from "next/link";
 import { db } from "@/lib/db/client";
-import { students } from "@/lib/students/schema";
+import { admins } from "@/lib/admins/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
-export default async function StudentsPage() {
+export default async function AdminsPage() {
   await requireAdmin();
-  const allStudents = await db.select().from(students).orderBy(students.createdAt);
+  const allAdmins = await db.select().from(admins).orderBy(admins.createdAt);
 
   return (
     <div className="flex flex-1 flex-col items-center bg-white">
       <main className="flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:px-16">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">Students</h1>
+          <h1 className="text-2xl font-bold text-primary">Admins</h1>
           <BackLink href="/">← Back home</BackLink>
         </div>
-
-        <Link
-          href="/admins/feedback"
-          className="self-start rounded-md bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-dark"
-        >
-          View all feedback
-        </Link>
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
@@ -33,10 +25,10 @@ export default async function StudentsPage() {
                   Username
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
-                  Profile Picture
+                  Email
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
-                  Walking Speed
+                  Email Verified
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">
                   Created At
@@ -45,29 +37,29 @@ export default async function StudentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/20">
-              {allStudents.map((student) => (
-                <tr key={student.id}>
+              {allAdmins.map((admin) => (
+                <tr key={admin.id}>
                   <td className="px-4 py-3 font-semibold text-accent">
-                    {student.username}
+                    {admin.username}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {student.profilePicture ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted capitalize">
-                    {student.walkingSpeed}
+                    {admin.email}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {new Date(student.createdAt).toLocaleString()}
+                    {admin.emailVerified ? "Yes" : "No"}
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {new Date(admin.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted">
-                    {student.id}
+                    {admin.id}
                   </td>
                 </tr>
               ))}
-              {allStudents.length === 0 && (
+              {allAdmins.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-muted">
-                    No students yet.
+                    No admins yet.
                   </td>
                 </tr>
               )}
