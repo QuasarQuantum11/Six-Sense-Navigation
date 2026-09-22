@@ -65,7 +65,7 @@ export function FeedbackRowActions({
         <button
           type="button"
           onClick={openEdit}
-          className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-dark"
+          className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark"
         >
           Edit
         </button>
