@@ -7,7 +7,7 @@ import os
 # SETTINGS
 # --------------------------------------------------
 
-FLOOR = "2"
+FLOOR = "3"
 
 IMAGE_PATH = f"floorplans/Floor {FLOOR}.png"
 OUTPUT_PATH = "output/nodes.json"

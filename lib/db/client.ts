@@ -5,6 +5,7 @@ import * as adminsSchema from "@/lib/admins/schema";
 import * as feedbackSchema from "@/lib/feedback/schema";
 import * as studentsSchema from "@/lib/students/schema";
 import * as timetablesSchema from "@/lib/timetables/schema";
+import * as navigationSchema from "@/lib/navigation/schema";
 
 // Create the connection pool
 const pool = new Pool({
@@ -22,6 +23,7 @@ export const db = drizzle(pool, {
     ...feedbackSchema,
     ...studentsSchema,
     ...timetablesSchema,
+    ...navigationSchema
   },
 });
 

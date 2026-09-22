@@ -14,7 +14,7 @@ export default async function Home() {
           Clayton campus, with routing that respects your accessibility
           preferences.
         </p>
-        <div className="flex gap-4 mt-4">
+        <div className="mt-4 flex flex-wrap justify-center gap-4">
           <Link
             href="/map"
             className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
@@ -45,6 +45,12 @@ export default async function Home() {
               </Link>
             </>
           )}
+          <Link
+            href="/timetable"
+            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
+          >
+            Timetable
+          </Link>
         </div>
       </main>
     </div>
