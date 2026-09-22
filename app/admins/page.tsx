@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { admins } from "@/lib/admins/schema";
 import { requireAdmin } from "@/lib/auth/dal";
@@ -17,13 +16,6 @@ export default async function AdminsPage() {
           <h1 className="text-2xl font-bold text-primary">Admins</h1>
           <BackLink fallbackHref="/">← Back home</BackLink>
         </div>
-
-        <Link
-          href="/admins/feedback"
-          className="self-start rounded-md bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-dark"
-        >
-          View all feedback
-        </Link>
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
@@ -47,7 +39,7 @@ export default async function AdminsPage() {
             <tbody className="divide-y divide-primary/20">
               {allAdmins.map((admin) => (
                 <tr key={admin.id}>
-                  <td className="px-4 py-3 font-semibold text-primary">
+                  <td className="px-4 py-3 font-semibold text-accent">
                     {admin.username}
                   </td>
                   <td className="px-4 py-3 text-muted">

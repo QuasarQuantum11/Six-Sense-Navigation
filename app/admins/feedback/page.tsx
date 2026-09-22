@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { feedback } from "@/lib/feedback/schema";
@@ -53,12 +52,9 @@ export default async function AllFeedbackPage() {
                 <tr key={item.id}>
                   <td className="px-4 py-3 text-muted">
                     {item.student ? (
-                      <Link
-                        href={`/students/${item.student.id}/feedback`}
-                        className="font-semibold text-accent hover:text-accent-dark hover:underline"
-                      >
+                      <span className="font-semibold text-accent">
                         {item.student.username}
-                      </Link>
+                      </span>
                     ) : (
                       "Guest"
                     )}

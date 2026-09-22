@@ -18,6 +18,13 @@ export default async function StudentsPage() {
           <BackLink fallbackHref="/">← Back home</BackLink>
         </div>
 
+        <Link
+          href="/admins/feedback"
+          className="self-start rounded-md bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-dark"
+        >
+          View all feedback
+        </Link>
+
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
             <thead className="bg-panel">
@@ -35,21 +42,13 @@ export default async function StudentsPage() {
                   Created At
                 </th>
                 <th className="px-4 py-3 font-semibold text-primary">ID</th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Feedback
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/20">
               {allStudents.map((student) => (
                 <tr key={student.id}>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/students/${student.id}`}
-                      className="font-semibold text-accent hover:text-accent-dark hover:underline"
-                    >
-                      {student.username}
-                    </Link>
+                  <td className="px-4 py-3 font-semibold text-accent">
+                    {student.username}
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {student.profilePicture ?? "—"}
@@ -63,19 +62,11 @@ export default async function StudentsPage() {
                   <td className="px-4 py-3 font-mono text-xs text-muted">
                     {student.id}
                   </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/students/${student.id}/feedback`}
-                      className="inline-block rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-dark"
-                    >
-                      Feedback
-                    </Link>
-                  </td>
                 </tr>
               ))}
               {allStudents.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={5} className="px-4 py-6 text-center text-muted">
                     No students yet.
                   </td>
                 </tr>
