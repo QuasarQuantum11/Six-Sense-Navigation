@@ -5,7 +5,7 @@ import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { feedback } from "@/lib/feedback/schema";
 import { requireStudentOrAdmin } from "@/lib/auth/dal";
-import { BackLink } from "@/components/back-link";
+import { FeedbackRowActions } from "@/components/feedback/feedback-row-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +42,12 @@ export default async function StudentFeedbackPage({
           <h1 className="text-2xl font-bold text-primary">
             Feedback from {student.username}
           </h1>
-          <BackLink fallbackHref={`/students/${student.id}`}>
-            ← Back to {student.username}
-          </BackLink>
+          <Link
+            href="/"
+            className="text-sm font-semibold text-accent hover:text-accent-dark"
+          >
+            ← Back home
+          </Link>
         </div>
 
         <Link
@@ -67,6 +70,9 @@ export default async function StudentFeedbackPage({
                 <th className="px-4 py-3 font-semibold text-primary">
                   Submitted
                 </th>
+                <th className="px-4 py-3 font-semibold text-primary">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/20">
@@ -81,11 +87,17 @@ export default async function StudentFeedbackPage({
                   <td className="px-4 py-3 text-muted">
                     {new Date(item.createdAt).toLocaleString()}
                   </td>
+                  <td className="px-4 py-3">
+                    <FeedbackRowActions
+                      feedbackId={item.id}
+                      message={item.message}
+                    />
+                  </td>
                 </tr>
               ))}
               {studentFeedback.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={4} className="px-4 py-6 text-center text-muted">
                     No feedback submitted yet.
                   </td>
                 </tr>
