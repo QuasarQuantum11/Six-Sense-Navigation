@@ -18,19 +18,19 @@ const exampleTimetables = [
     username: "alice",
     name: "Semester 1 2026",
     stops: [
-      { building: "Learning and Teaching Building", position: 1 },
-      { building: "Science Building", position: 2 },
-      { building: "Learning and Teaching Building", position: 3 },
-      { building: "Library", position: 4 },
+      { building: "Learning and Teaching Building", position: 1, day: "Monday", time: "09:00" },
+      { building: "Science Building", position: 2, day: "Monday", time: "11:00" },
+      { building: "Learning and Teaching Building", position: 3, day: "Wednesday", time: "10:00" },
+      { building: "Library", position: 4, day: "Wednesday", time: "14:00" },
     ],
   },
   {
     username: "alice",
     name: "Semester 2 2026",
     stops: [
-      { building: "Engineering Block", position: 1 },
-      { building: "Library", position: 2 },
-      { building: "Sports and Recreation Centre", position: 3 },
+      { building: "Engineering Block", position: 1, day: "Tuesday", time: "09:00" },
+      { building: "Library", position: 2, day: "Tuesday", time: "13:00" },
+      { building: "Sports and Recreation Centre", position: 3, day: "Thursday", time: "16:00" },
     ],
   },
 ];
@@ -82,9 +82,9 @@ async function main() {
           [stop.building],
         );
         await pool.query(
-          `INSERT INTO timetable_buildings (timetable_id, building_id, position)
-           VALUES ($1, $2, $3)`,
-          [timetableId, buildingRows[0].id, stop.position],
+          `INSERT INTO timetable_buildings (timetable_id, building_id, position, day_of_week, start_time)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [timetableId, buildingRows[0].id, stop.position, stop.day, stop.time],
         );
       }
       console.log(

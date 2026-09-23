@@ -45,12 +45,6 @@ export default async function Home() {
               </Link>
             </>
           )}
-          <Link
-            href="/timetable"
-            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
-          >
-            Timetable
-          </Link>
         </div>
       </main>
     </div>
