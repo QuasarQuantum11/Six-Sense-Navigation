@@ -22,8 +22,13 @@ type IndoorDistance = {
     indoor_horizontal_distance_m: number;
     map_straight_line_m: number | null;
     vertical_segments: number;
+    lift_segments: number;
+    stair_segments: number;
     distance_complete: boolean;
     total_known_distance_m: number;
+    total_estimated_distance_m: number | null;
+    total_estimate_min_m: number | null;
+    total_estimate_max_m: number | null;
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -235,7 +240,8 @@ export default function Map() {
                 if (
                     typeof data.outdoor_distance_m === "number" &&
                     typeof data.indoor_horizontal_distance_m === "number" &&
-                    typeof data.total_known_distance_m === "number"
+                    typeof data.total_known_distance_m === "number" &&
+                    (data.total_estimated_distance_m === null || typeof data.total_estimated_distance_m === "number")
                 ) {
                     setIndoorDistance(data);
                 }
@@ -368,11 +374,21 @@ export default function Map() {
                             {indoorDistance.map_straight_line_m !== null && (
                                 <p>Indoor straight line on map: {indoorDistance.map_straight_line_m.toFixed(1)} m</p>
                             )}
-                            <p>Known route total: {indoorDistance.total_known_distance_m.toFixed(1)} m</p>
+                            <p>Outdoor + indoor horizontal subtotal: {indoorDistance.total_known_distance_m.toFixed(1)} m</p>
+                            {indoorDistance.total_estimated_distance_m !== null &&
+                                indoorDistance.total_estimate_min_m !== null &&
+                                indoorDistance.total_estimate_max_m !== null && (
+                                <p>
+                                    Estimated route total: {indoorDistance.total_estimated_distance_m.toFixed(1)} m
+                                    {indoorDistance.vertical_segments > 0 && (
+                                        <> (connector assumption range: {indoorDistance.total_estimate_min_m.toFixed(1)}–{indoorDistance.total_estimate_max_m.toFixed(1)} m)</>
+                                    )}
+                                </p>
+                            )}
                             {!indoorDistance.distance_complete && (
                                 <p>
-                                    Includes {indoorDistance.vertical_segments} floor change(s).
-                                    Stair/lift travel distance is not included until measured.
+                                    {indoorDistance.stair_segments} stair and {indoorDistance.lift_segments} lift floor change(s).
+                                    Cross-floor distances are estimates, not measurements; the range does not cover map or graph error.
                                 </p>
                             )}
                         </div>

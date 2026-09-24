@@ -60,6 +60,7 @@ for edge in LTB_EDGES:
         edge["to"],
         weight=weight,
         vertical=edge.get("vertical", False),
+        connector_type=edge.get("type"),
     )
 
 print(f"LTB routing graph ready: {LTB_G.number_of_nodes()} nodes, {LTB_G.number_of_edges()} edges")
@@ -151,8 +152,24 @@ def get_ltb_route(start_lat: float, start_lon: float, end_node: str):
             result["outdoor_distance_m"] = outdoor_distance
             result.update(indoor_metrics)
 
-            comparison_score = outdoor_distance + indoor_metrics["indoor_horizontal_distance_m"]
-            result["total_known_distance_m"] = round(comparison_score, 1)
+            known_distance = outdoor_distance + indoor_metrics["indoor_horizontal_distance_m"]
+            result["total_known_distance_m"] = round(known_distance, 1)
+            indoor_estimate = indoor_metrics["indoor_estimated_distance_m"]
+            result["total_estimated_distance_m"] = (
+                round(outdoor_distance + indoor_estimate, 1)
+                if indoor_estimate is not None else None
+            )
+            result["total_estimate_min_m"] = (
+                round(outdoor_distance + indoor_metrics["indoor_estimate_min_m"], 1)
+                if indoor_estimate is not None else None
+            )
+            result["total_estimate_max_m"] = (
+                round(outdoor_distance + indoor_metrics["indoor_estimate_max_m"], 1)
+                if indoor_estimate is not None else None
+            )
+            comparison_score = result["total_estimated_distance_m"]
+            if comparison_score is None:
+                comparison_score = known_distance + 1_000_000
 
             if best_result is None or comparison_score < best_result["comparison_score"]:
                 result["comparison_score"] = comparison_score

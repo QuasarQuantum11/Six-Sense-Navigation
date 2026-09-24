@@ -26,21 +26,52 @@ class IndoorDistanceTests(unittest.TestCase):
         metrics = measure_indoor_path(graph, ["a", "b", "c"])
         self.assertEqual(metrics["indoor_horizontal_distance_m"], 20.0)
         self.assertEqual(metrics["map_straight_line_m"], 14.1)
+        self.assertEqual(metrics["indoor_estimated_distance_m"], 20.0)
         self.assertTrue(metrics["distance_complete"])
 
-    def test_cross_floor_route_does_not_claim_an_actual_vertical_distance(self):
+    def test_cross_floor_stair_route_reports_an_assumption_range(self):
         graph = nx.Graph()
         graph.add_node("a", floor="G", x_pixel=0, y_pixel=0)
         graph.add_node("b", floor="G", x_pixel=PIXELS_PER_METRE, y_pixel=0)
         graph.add_node("c", floor="1", x_pixel=PIXELS_PER_METRE, y_pixel=0)
         graph.add_edge("a", "b", distance_pixels=PIXELS_PER_METRE)
-        graph.add_edge("b", "c", vertical=True)
+        graph.add_edge("b", "c", vertical=True, connector_type="stairs")
 
         metrics = measure_indoor_path(graph, ["a", "b", "c"])
         self.assertEqual(metrics["indoor_horizontal_distance_m"], 1.0)
         self.assertIsNone(metrics["map_straight_line_m"])
         self.assertEqual(metrics["vertical_segments"], 1)
+        self.assertEqual(metrics["stair_segments"], 1)
+        self.assertEqual(metrics["estimated_vertical_distance_m"], 12.0)
+        self.assertEqual(metrics["indoor_estimated_distance_m"], 13.0)
+        self.assertEqual(metrics["indoor_estimate_min_m"], 9.0)
+        self.assertEqual(metrics["indoor_estimate_max_m"], 17.0)
         self.assertFalse(metrics["distance_complete"])
+
+    def test_lift_route_uses_vertical_travel_not_stair_walking_length(self):
+        graph = nx.Graph()
+        graph.add_node("g", floor="G", x_pixel=0, y_pixel=0)
+        graph.add_node("one", floor="1", x_pixel=0, y_pixel=0)
+        graph.add_node("two", floor="2", x_pixel=0, y_pixel=0)
+        graph.add_edge("g", "one", vertical=True, connector_type="lift")
+        graph.add_edge("one", "two", vertical=True, connector_type="lift")
+
+        metrics = measure_indoor_path(graph, ["g", "one", "two"])
+        self.assertEqual(metrics["lift_segments"], 2)
+        self.assertEqual(metrics["indoor_estimated_distance_m"], 9.0)
+        self.assertEqual(metrics["indoor_estimate_min_m"], 8.0)
+        self.assertEqual(metrics["indoor_estimate_max_m"], 10.0)
+        self.assertFalse(metrics["distance_complete"])
+
+    def test_unknown_vertical_connector_does_not_claim_a_complete_estimate(self):
+        graph = nx.Graph()
+        graph.add_node("a", floor="G", x_pixel=0, y_pixel=0)
+        graph.add_node("b", floor="1", x_pixel=0, y_pixel=0)
+        graph.add_edge("a", "b", vertical=True)
+
+        metrics = measure_indoor_path(graph, ["a", "b"])
+        self.assertEqual(metrics["unknown_segments"], 1)
+        self.assertIsNone(metrics["indoor_estimated_distance_m"])
 
     def test_routing_prefers_a_same_floor_path_to_a_floor_change_detour(self):
         graph = nx.Graph()
