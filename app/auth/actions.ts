@@ -1,16 +1,19 @@
 "use server";
 
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { admins } from "@/lib/admins/schema";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { isValidAdminInvite } from "@/lib/auth/admin-invite";
 import {
   assertSessionConfigured,
   createSession,
   deleteSession,
+  getSession,
 } from "@/lib/auth/session";
 import {
   type AuthActionState,
+  adminSignupSchema,
   loginSchema,
   signupSchema,
 } from "@/lib/auth/validation";
@@ -37,16 +40,6 @@ export async function signup(
   try {
     assertSessionConfigured();
 
-    const existing = await db
-      .select({ id: students.id })
-      .from(students)
-      .where(or(eq(students.username, username), eq(students.email, email)))
-      .limit(1);
-
-    if (existing.length > 0) {
-      return { message: "That username or email is already registered." };
-    }
-
     const [student] = await db
       .insert(students)
       .values({
@@ -55,10 +48,11 @@ export async function signup(
         passwordHash: await hashPassword(password),
         walkingSpeed,
       })
+      .onConflictDoNothing()
       .returning({ id: students.id, username: students.username });
 
     if (!student) {
-      return { message: "Unable to create your account. Please try again." };
+      return { message: "That username or email is already registered." };
     }
 
     await createSession({
@@ -72,6 +66,52 @@ export async function signup(
   }
 
   redirect("/");
+}
+
+export async function adminSignup(
+  _state: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const result = adminSignupSchema.safeParse({
+    username: formData.get("username"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    inviteCode: formData.get("inviteCode"),
+  });
+
+  if (!result.success) {
+    return { errors: result.error.flatten().fieldErrors };
+  }
+
+  const { username, email, password, inviteCode } = result.data;
+  if (!isValidAdminInvite(inviteCode)) {
+    return { errors: { inviteCode: ["Invalid invitation code."] } };
+  }
+
+  try {
+    assertSessionConfigured();
+
+    const [admin] = await db
+      .insert(admins)
+      .values({ username, email, passwordHash: await hashPassword(password) })
+      .onConflictDoNothing()
+      .returning({ id: admins.id, username: admins.username });
+
+    if (!admin) {
+      return { message: "That username or email is already registered." };
+    }
+
+    await createSession({
+      userId: admin.id,
+      username: admin.username,
+      role: "admin",
+    });
+  } catch (error) {
+    console.error("Admin sign-up failed", error);
+    return { message: "Unable to create your account. Please try again." };
+  }
+
+  redirect("/admins/feedback");
 }
 
 export async function login(
@@ -116,6 +156,7 @@ export async function login(
 }
 
 export async function logout(): Promise<void> {
+  const session = await getSession();
   await deleteSession();
-  redirect("/login");
+  redirect(session?.role === "admin" ? "/admin/login" : "/login");
 }

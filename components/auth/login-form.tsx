@@ -7,26 +7,12 @@ import type { AuthActionState } from "@/lib/auth/validation";
 
 const initialState: AuthActionState = {};
 
-export function LoginForm() {
+export function LoginForm({ role }: { role: "student" | "admin" }) {
   const [state, action, pending] = useActionState(login, initialState);
 
   return (
     <form action={action} className="flex flex-col gap-5">
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm font-semibold text-primary">
-          Account type
-        </legend>
-        <div className="flex gap-5">
-          <label className="flex items-center gap-2 text-sm">
-            <input name="role" type="radio" value="student" defaultChecked />
-            Student
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input name="role" type="radio" value="admin" />
-            Admin
-          </label>
-        </div>
-      </fieldset>
+      <input name="role" type="hidden" value={role} />
 
       <label className="flex flex-col gap-2 text-sm font-semibold text-primary">
         Email
@@ -70,12 +56,37 @@ export function LoginForm() {
         {pending ? "Logging in…" : "Log in"}
       </button>
 
-      <p className="text-center text-sm text-muted">
-        New student?{" "}
-        <Link href="/signup" className="font-semibold text-accent hover:underline">
-          Create an account
-        </Link>
-      </p>
+      {role === "student" ? (
+        <>
+          <p className="text-center text-sm text-muted">
+            New student?{" "}
+            <Link href="/signup" className="font-semibold text-accent hover:underline">
+              Create an account
+            </Link>
+          </p>
+          <p className="text-center text-sm text-muted">
+            Administrator?{" "}
+            <Link href="/admin/login" className="font-semibold text-accent hover:underline">
+              Admin log in
+            </Link>
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-center text-sm text-muted">
+            Have an invitation code?{" "}
+            <Link href="/admin/signup" className="font-semibold text-accent hover:underline">
+              Create an admin account
+            </Link>
+          </p>
+          <p className="text-center text-sm text-muted">
+            Student?{" "}
+            <Link href="/login" className="font-semibold text-accent hover:underline">
+              Student log in
+            </Link>
+          </p>
+        </>
+      )}
     </form>
   );
 }
