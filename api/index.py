@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import osmnx as ox
 import networkx as nx
+from api.indoor_distance import measure_indoor_path, routing_weight_pixels
 
 app = FastAPI()
 
@@ -51,10 +52,14 @@ for node_id, data in LTB_NODES.items():
     LTB_G.add_node(node_id, **data)
 
 for edge in LTB_EDGES:
+    weight = routing_weight_pixels(
+        edge, LTB_NODES[edge["from"]], LTB_NODES[edge["to"]]
+    )
     LTB_G.add_edge(
         edge["from"],
         edge["to"],
-        weight=edge.get("distance_pixels", 1)
+        weight=weight,
+        vertical=edge.get("vertical", False),
     )
 
 print(f"LTB routing graph ready: {LTB_G.number_of_nodes()} nodes, {LTB_G.number_of_edges()} edges")
@@ -98,7 +103,7 @@ def get_indoor_route(start_node: str, end_node: str):
                 "y_pixel": data.get("y_pixel")
             })
 
-        return {"route": route}
+        return {"route": route, **measure_indoor_path(LTB_G, path)}
 
     except Exception as e:
         return {"error": str(e)}
@@ -137,20 +142,17 @@ def get_ltb_route(start_lat: float, start_lon: float, end_node: str):
                 ]
             }
 
-            outdoor_distance = sum(G.edges[u, v, 0].get("length", 0) for u, v in zip(outdoor_path[:-1], outdoor_path[1:]))
-
-            indoor_distance_pixels = sum(
-                LTB_G.edges[u, v].get("weight", 0)
-                for u, v in zip(indoor_path[:-1], indoor_path[1:])
+            outdoor_distance = sum(
+                min(edge["length"] for edge in G.get_edge_data(u, v).values())
+                for u, v in zip(outdoor_path[:-1], outdoor_path[1:])
             )
 
-            indoor_distance_m = indoor_distance_pixels / 14.2
-
+            indoor_metrics = measure_indoor_path(LTB_G, indoor_path)
             result["outdoor_distance_m"] = outdoor_distance
-            result["indoor_distance_pixels"] = indoor_distance_pixels
-            result["indoor_distance_m"] = indoor_distance_m
+            result.update(indoor_metrics)
 
-            comparison_score = outdoor_distance + indoor_distance_m
+            comparison_score = outdoor_distance + indoor_metrics["indoor_horizontal_distance_m"]
+            result["total_known_distance_m"] = round(comparison_score, 1)
 
             if best_result is None or comparison_score < best_result["comparison_score"]:
                 result["comparison_score"] = comparison_score

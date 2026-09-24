@@ -17,7 +17,19 @@ type IndoorRouteNode = IndoorNode & {
     id: string;
 };
 
-const API_URL = "https://six-sense-navigation-api.onrender.com";
+type IndoorDistance = {
+    outdoor_distance_m: number;
+    indoor_horizontal_distance_m: number;
+    map_straight_line_m: number | null;
+    vertical_segments: number;
+    distance_complete: boolean;
+    total_known_distance_m: number;
+};
+
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ??
+    (process.env.NODE_ENV === "development"
+        ? "http://localhost:8000"
+        : "https://six-sense-navigation-api.onrender.com");
 
 // Indoor floor-plan images used to display the LTB route.
 const floorPlans: Record<string, string> = {
@@ -36,6 +48,7 @@ export default function Map() {
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
     const [destination, setDestination] = useState("");
     const [indoorRoute, setIndoorRoute] = useState<IndoorRouteNode[]>([]);
+    const [indoorDistance, setIndoorDistance] = useState<IndoorDistance | null>(null);
     const [selectedFloor, setSelectedFloor] = useState("G");
     const [startSelected, setStartSelected] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -62,10 +75,6 @@ export default function Map() {
         let routeLayer: L.Polyline | null = null;
         
         const graphLayer = L.layerGroup().addTo(map);
-        const apiBaseUrl =
-            process.env.NEXT_PUBLIC_API_BASE_URL ??
-            (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
-
             fetch("/api/graph")
                 .then((response) => response.json())
                 .then((data) => {
@@ -115,6 +124,7 @@ export default function Map() {
                     endMarker = null;
                     setStartSelected(false);
                     setIndoorRoute([]);
+                    setIndoorDistance(null);
                 }
 
                 if (!startMarker) {
@@ -195,6 +205,8 @@ export default function Map() {
         const start = startMarker.getLatLng();
 
         setLoading(true);
+        setIndoorRoute([]);
+        setIndoorDistance(null);
 
         try {
             const response = await fetch(
@@ -220,6 +232,13 @@ export default function Map() {
             if (data.indoor_path) {
                 setIndoorRoute(data.indoor_path);
                 setSelectedFloor(data.indoor_path[0]?.floor || "G");
+                if (
+                    typeof data.outdoor_distance_m === "number" &&
+                    typeof data.indoor_horizontal_distance_m === "number" &&
+                    typeof data.total_known_distance_m === "number"
+                ) {
+                    setIndoorDistance(data);
+                }
             }
         } catch (error) {
             console.error(
@@ -341,6 +360,23 @@ export default function Map() {
                     <h3 style={{ marginTop: 0 }}>
                         LTB Indoor Route
                     </h3>
+
+                    {indoorDistance && (
+                        <div className="mb-3 text-sm" aria-live="polite">
+                            <p>Outdoor route: {indoorDistance.outdoor_distance_m.toFixed(1)} m</p>
+                            <p>Indoor floor-plan route: {indoorDistance.indoor_horizontal_distance_m.toFixed(1)} m</p>
+                            {indoorDistance.map_straight_line_m !== null && (
+                                <p>Indoor straight line on map: {indoorDistance.map_straight_line_m.toFixed(1)} m</p>
+                            )}
+                            <p>Known route total: {indoorDistance.total_known_distance_m.toFixed(1)} m</p>
+                            {!indoorDistance.distance_complete && (
+                                <p>
+                                    Includes {indoorDistance.vertical_segments} floor change(s).
+                                    Stair/lift travel distance is not included until measured.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {floorsInRoute.length > 1 && (
                         <div style={{ marginBottom: 10 }}>
