@@ -292,6 +292,8 @@ export default function Map() {
     const routePoints = floorRoute
         .map((node) => `${node.x_pixel},${node.y_pixel}`)
         .join(" ");
+    const totalRouteDistance = indoorDistance?.total_estimated_distance_m ??
+        (indoorDistance?.vertical_segments === 0 ? indoorDistance.total_known_distance_m : null);
 
     return (
         <div className="absolute inset-0 overflow-hidden">
@@ -352,23 +354,50 @@ export default function Map() {
 
                     {indoorRoute.length > 0 && (
                         <div className="mt-5 border-t border-slate-200 pt-4" aria-live="polite">
-                            <h3 className="font-semibold text-slate-900">Outdoor route ready</h3>
-                            {entranceNode && <p className="mt-1 text-sm text-slate-600">Continue to LTB entrance {entranceNode}.</p>}
+                            <h3 className="font-semibold text-slate-900">Route calculated</h3>
+                            {entranceNode && <p className="mt-1 text-sm text-slate-600">Outdoor route to LTB entrance {entranceNode}.</p>}
                             {indoorDistance && (
                                 <>
-                                    <p className="mt-2 text-sm">Outdoor distance: {indoorDistance.outdoor_distance_m.toFixed(1)} m</p>
-                                    {indoorDistance.total_estimated_distance_m !== null && (
-                                        <p className="text-sm">Estimated total including indoor route: {indoorDistance.total_estimated_distance_m.toFixed(1)} m</p>
-                                    )}
+                                    <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                                        <p className="text-sm font-medium text-blue-900">
+                                            {indoorDistance.vertical_segments > 0 ? "Estimated route distance" : "Map-based route distance"}
+                                        </p>
+                                        <p className="text-3xl font-bold text-blue-950">
+                                            {totalRouteDistance !== null ? `${totalRouteDistance.toFixed(1)} m` : "Distance unavailable"}
+                                        </p>
+                                        {indoorDistance.vertical_segments > 0 &&
+                                            indoorDistance.total_estimate_min_m !== null &&
+                                            indoorDistance.total_estimate_max_m !== null && (
+                                            <p className="text-xs text-blue-900">
+                                                Stair/lift assumption range: {indoorDistance.total_estimate_min_m.toFixed(1)}–{indoorDistance.total_estimate_max_m.toFixed(1)} m
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setView("indoor")}
+                                        className="mt-3 w-full rounded-md bg-orange-700 px-4 py-2.5 font-semibold text-white hover:bg-orange-800"
+                                    >
+                                        Enter LTB — view indoor route
+                                    </button>
+                                    <dl className="mt-3 space-y-1 text-sm text-slate-700">
+                                        <div className="flex justify-between gap-3"><dt>Outdoor to entrance</dt><dd>{indoorDistance.outdoor_distance_m.toFixed(1)} m</dd></div>
+                                        <div className="flex justify-between gap-3"><dt>Indoor floor-plan path</dt><dd>{indoorDistance.indoor_horizontal_distance_m.toFixed(1)} m</dd></div>
+                                        {indoorDistance.vertical_segments > 0 && (
+                                            <div className="flex justify-between gap-3"><dt>Stairs/lift estimate</dt><dd>{indoorDistance.estimated_vertical_distance_m !== null ? `${indoorDistance.estimated_vertical_distance_m.toFixed(1)} m` : "Unavailable"}</dd></div>
+                                        )}
+                                    </dl>
+                                    <p className="mt-2 text-xs text-slate-600">Based on the mapped route, not a field measurement.</p>
                                 </>
                             )}
-                            <button
-                                type="button"
-                                onClick={() => setView("indoor")}
-                                className="mt-3 w-full rounded-md bg-orange-700 px-4 py-2.5 font-semibold text-white hover:bg-orange-800"
-                            >
-                                Enter LTB — view indoor route
-                            </button>
+                            {!indoorDistance && (
+                                <>
+                                    <p className="mt-2 text-sm text-slate-600">Distance details are unavailable from the API.</p>
+                                    <button type="button" onClick={() => setView("indoor")} className="mt-3 w-full rounded-md bg-orange-700 px-4 py-2.5 font-semibold text-white hover:bg-orange-800">
+                                        Enter LTB — view indoor route
+                                    </button>
+                                </>
+                            )}
                         </div>
                     )}
                 </section>
