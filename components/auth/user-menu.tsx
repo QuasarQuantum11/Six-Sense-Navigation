@@ -43,14 +43,14 @@ export function UserMenu({
           role="menu"
           className="absolute right-0 z-10 mt-2 w-40 rounded-md border-2 border-primary/20 bg-white py-1 shadow-lg"
         >
-          <button
-            type="button"
-            disabled
+          <Link
+            href="/profile"
             role="menuitem"
-            className="block w-full cursor-not-allowed px-4 py-2 text-left text-sm text-muted"
+            className="block px-4 py-2 text-sm text-foreground hover:bg-panel"
+            onClick={() => setOpen(false)}
           >
             Profile
-          </button>
+          </Link>
           <Link
             href={
               role === "admin"

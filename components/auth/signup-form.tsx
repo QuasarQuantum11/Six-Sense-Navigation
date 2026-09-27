@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useActionState } from "react";
 import { signup } from "@/app/auth/actions";
 import type { AuthActionState } from "@/lib/auth/validation";
@@ -9,14 +10,46 @@ const initialState: AuthActionState = {};
 
 export function SignupForm() {
   const [state, action, pending] = useActionState(signup, initialState);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [walkingSpeed, setWalkingSpeed] = useState("normal");
+  const [passwordError, setPasswordError] = useState("");
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (password.length < 8) {
+      event.preventDefault();
+      setPasswordError("Password must be at least 8 characters.");
+      setPassword("");
+      return;
+    }
+
+    if (!/[A-Za-z]/.test(password)) {
+      event.preventDefault();
+      setPasswordError("Password must contain a letter.");
+      setPassword("");
+      return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+      event.preventDefault();
+      setPasswordError("Password must contain a number.");
+      setPassword("");
+      return;
+    }
+
+    setPasswordError("");
+  }
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form action={action} onSubmit={handleSubmit} className="flex flex-col gap-5">
       <label className="flex flex-col gap-2 text-sm font-semibold text-primary">
         Username
         <input
           className="rounded-md border-2 border-primary/30 px-3 py-2 font-normal text-foreground focus:border-accent focus:outline-none"
           name="username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
           autoComplete="username"
           required
         />
@@ -31,6 +64,8 @@ export function SignupForm() {
           className="rounded-md border-2 border-primary/30 px-3 py-2 font-normal text-foreground focus:border-accent focus:outline-none"
           name="email"
           type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           autoComplete="email"
           required
         />
@@ -42,17 +77,28 @@ export function SignupForm() {
       <label className="flex flex-col gap-2 text-sm font-semibold text-primary">
         Password
         <input
-          className="rounded-md border-2 border-primary/30 px-3 py-2 font-normal text-foreground focus:border-accent focus:outline-none"
+          className={`rounded-md border-2 px-3 py-2 font-normal text-foreground focus:border-accent focus:outline-none ${
+            passwordError ? "border-red-500" : "border-primary/30"
+          }`}
           name="password"
           type="password"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setPasswordError("");
+          }}
           autoComplete="new-password"
-          minLength={8}
           required
         />
         <span className="font-normal text-muted">
           At least 8 characters with a letter and a number.
         </span>
       </label>
+
+      {passwordError && (
+        <p className="text-sm text-red-700">{passwordError}</p>
+      )}
+
       {state.errors?.password?.map((error) => (
         <p key={error} className="text-sm text-red-700">{error}</p>
       ))}
@@ -62,7 +108,8 @@ export function SignupForm() {
         <select
           className="rounded-md border-2 border-primary/30 bg-white px-3 py-2 font-normal text-foreground focus:border-accent focus:outline-none"
           name="walkingSpeed"
-          defaultValue="normal"
+          value={walkingSpeed}
+          onChange={(event) => setWalkingSpeed(event.target.value)}
         >
           <option value="accessible">Accessible pace</option>
           <option value="normal">Normal pace</option>
