@@ -15,10 +15,10 @@ export const verifySession = cache(async () => {
 });
 
 export async function requireAdmin() {
-  const session = await verifySession();
+  const session = await getSession();
 
-  if (session.role !== "admin") {
-    redirect("/");
+  if (!session || session.role !== "admin") {
+    redirect("/admin/login");
   }
 
   return session;

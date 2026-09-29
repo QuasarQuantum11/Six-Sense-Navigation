@@ -35,6 +35,17 @@ npm run dev
 Open <http://localhost:3000>. The Python API documentation is available at
 <http://localhost:8000/docs>.
 
+## Administrator registration
+
+Student sign-up is available at `/signup`. Administrator sign-up uses
+`/admin/signup` and requires an invitation code from the server-side
+`ADMIN_INVITE_CODES` allowlist in `.env.local` (or the deployment environment). Generate a random code with
+`openssl rand -hex 24` and add it to the comma-separated list. Codes are
+reusable until removed from the list; rotate them after distribution or use.
+If the variable is empty, no administrator can sign up. Never commit real codes
+or put them in a `NEXT_PUBLIC_` variable. Existing admins log in at
+`/admin/login`.
+
 ## Database
 
 Run migrations only after confirming the configured database/branch:

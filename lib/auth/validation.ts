@@ -21,6 +21,10 @@ export const signupSchema = z.object({
   walkingSpeed: z.enum(["accessible", "normal", "fast"]),
 });
 
+export const adminSignupSchema = signupSchema.omit({ walkingSpeed: true }).extend({
+  inviteCode: z.string().trim().min(1, "Enter an invitation code"),
+});
+
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),
   password: z.string().min(1, "Enter your password"),
@@ -34,6 +38,7 @@ export type AuthActionState = {
     password?: string[];
     walkingSpeed?: string[];
     role?: string[];
+    inviteCode?: string[];
   };
   message?: string;
 };
