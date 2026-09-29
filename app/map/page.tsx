@@ -15,7 +15,7 @@ const CampusMap = dynamic(() => import("@/components/Map"), {
 export default function MapPage() {
   return (
     <div className="flex flex-1 flex-col items-center bg-white w-full h-[calc(100vh-72px)] p-6">
-      <div className="w-full max-w-6xl h-full rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg relative isolate">
+      <div className="relative isolate min-h-0 w-full max-w-6xl flex-1 overflow-hidden rounded-xl border-2 border-gray-200 shadow-lg">
         <CampusMap />
       </div>
     </div>
