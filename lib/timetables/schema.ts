@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  doublePrecision,
   integer,
   pgEnum,
   pgTable,
@@ -24,6 +25,9 @@ export const dayOfWeek = pgEnum("day_of_week", [
 export const buildings = pgTable("buildings", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull().unique(),
+  // Nullable until every building has a location; search skips rows without one.
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
