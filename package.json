@@ -17,6 +17,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@e965/xlsx": "^0.20.3",
     "@vercel/functions": "^3.3.3",
     "drizzle-orm": "^0.45.1",
     "install": "^0.13.0",
