@@ -28,9 +28,14 @@ export async function AuthLinks() {
         {session.role === "admin" ? "Students" : "My timetable"}
       </Link>
       {session.role === "admin" && (
-        <Link href="/admins" className="text-sm font-semibold text-accent hover:text-accent-dark">
-          Admins
-        </Link>
+        <>
+          <Link href="/admins" className="text-sm font-semibold text-accent hover:text-accent-dark">
+            Admins
+          </Link>
+          <Link href="/admins/buildings" className="text-sm font-semibold text-accent hover:text-accent-dark">
+            Buildings
+          </Link>
+        </>
       )}
       <UserMenu
         username={session.username}
