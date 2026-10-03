@@ -4,6 +4,7 @@ import { db } from "@/lib/db/client";
 import { buildings, timetableBuildings } from "@/lib/timetables/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
+import { BuildingRowActions } from "@/components/buildings/building-row-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,9 @@ export default async function BuildingsPage() {
                 <th className="px-4 py-3 font-semibold text-primary">
                   Created At
                 </th>
+                <th className="px-4 py-3 font-semibold text-primary">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/20">
@@ -119,12 +123,15 @@ export default async function BuildingsPage() {
                     <td className="px-4 py-3 text-muted">
                       {new Date(building.createdAt).toLocaleString()}
                     </td>
+                    <td className="px-4 py-3">
+                      <BuildingRowActions building={building} />
+                    </td>
                   </tr>
                 );
               })}
               {allBuildings.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted">
                     No buildings yet.
                   </td>
                 </tr>

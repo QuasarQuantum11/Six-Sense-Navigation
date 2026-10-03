@@ -69,6 +69,22 @@ export const buildingSchema = z
     }
   });
 
+// Google Maps copies coordinates as "latitude, longitude", so a pasted pair
+// can fill both fields at once.
+const coordinatePairPattern = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
+
+export function parseCoordinatePair(text: string) {
+  const match = text.match(coordinatePairPattern);
+  return match ? { latitude: match[1], longitude: match[2] } : null;
+}
+
+// Raw form values, before validation.
+export type BuildingInput = {
+  name: string;
+  latitude: string;
+  longitude: string;
+};
+
 export type BuildingActionState = {
   errors?: {
     name?: string[];
