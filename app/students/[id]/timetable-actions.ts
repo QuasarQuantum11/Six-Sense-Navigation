@@ -15,6 +15,16 @@ export type TimetableEntryInput = {
   day: string;
   time: string;
   location: string;
+  subjectCode?: string;
+  subjectDescription?: string;
+  classGroup?: string;
+  activity?: string;
+  campus?: string;
+  sourceLocation?: string;
+  room?: string;
+  staff?: string;
+  duration?: string;
+  classDates?: string;
 };
 
 const validDays = new Set<string>(dayOfWeek.enumValues);
@@ -36,6 +46,16 @@ export async function saveTimetable(
       day: entry.day,
       time: entry.time,
       location: entry.location.trim(),
+      subjectCode: entry.subjectCode?.trim() || null,
+      subjectDescription: entry.subjectDescription?.trim() || null,
+      classGroup: entry.classGroup?.trim() || null,
+      activity: entry.activity?.trim() || null,
+      campus: entry.campus?.trim() || null,
+      sourceLocation: entry.sourceLocation?.trim() || null,
+      room: entry.room?.trim() || null,
+      staff: entry.staff?.trim() || null,
+      duration: entry.duration?.trim() || null,
+      classDates: entry.classDates?.trim() || null,
     }))
     .filter(
       (entry) =>
@@ -74,6 +94,16 @@ export async function saveTimetable(
         position: index + 1,
         dayOfWeek: entry.day as (typeof dayOfWeek.enumValues)[number],
         startTime: entry.time,
+        subjectCode: entry.subjectCode,
+        subjectDescription: entry.subjectDescription,
+        classGroup: entry.classGroup,
+        activity: entry.activity,
+        campus: entry.campus,
+        sourceLocation: entry.sourceLocation,
+        room: entry.room,
+        staff: entry.staff,
+        duration: entry.duration,
+        classDates: entry.classDates,
       });
     }
   });

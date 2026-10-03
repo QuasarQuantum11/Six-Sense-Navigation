@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useState, useTransition } from "react";
 import { deleteTimetable, saveTimetable } from "./timetable-actions";
+import { parseAllocatePlusWorkbook } from "@/lib/timetables/allocate-plus";
 
 type Stop = {
   position: number;
@@ -9,6 +10,16 @@ type Stop = {
   buildingName: string;
   dayOfWeek: string | null;
   startTime: string | null;
+  subjectCode: string | null;
+  subjectDescription: string | null;
+  classGroup: string | null;
+  activity: string | null;
+  campus: string | null;
+  sourceLocation: string | null;
+  room: string | null;
+  staff: string | null;
+  duration: string | null;
+  classDates: string | null;
 };
 
 type TimetableOption = {
@@ -21,6 +32,16 @@ type ManualClassRow = {
   day: string;
   time: string;
   location: string;
+  subjectCode?: string;
+  subjectDescription?: string;
+  classGroup?: string;
+  activity?: string;
+  campus?: string;
+  sourceLocation?: string;
+  room?: string;
+  staff?: string;
+  duration?: string;
+  classDates?: string;
 };
 
 const defaultDays = [
@@ -50,7 +71,7 @@ export function TimetableSelector({
 }) {
   const [timetableName, setTimetableName] = useState("My Timetable");
   const [manualRows, setManualRows] = useState<ManualClassRow[]>([
-    { day: "Monday", time: "", location: "Building name" },
+    { day: "Monday", time: "", location: "" },
   ]);
   const [saveMessage, setSaveMessage] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -81,33 +102,21 @@ export function TimetableSelector({
       return;
     }
 
-    const text = await file.text();
-    const parsedLines = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(1);
-
-    const rows = parsedLines
-      .map((line) => line.split(",").map((cell) => cell.trim()))
-      .filter((cells) => cells.length >= 3)
-      .map(([day, time, location]) => ({
-        day: day || "Monday",
-        time: time || "",
-        location: location || "",
-      }));
-
-    if (rows.length > 0) {
+    try {
+      const rows = parseAllocatePlusWorkbook(await file.arrayBuffer());
       setManualRows(rows);
-      setSaveMessage(`${rows.length} class entries loaded from ${file.name}.`);
+      setSaveMessage(
+        `Imported ${rows.length} classes from ${file.name}. Review them below, then save.`,
+      );
       event.target.value = "";
-      return;
+    } catch (error) {
+      setSaveMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not read this Allocate+ workbook.",
+      );
+      event.target.value = "";
     }
-
-    setSaveMessage(
-      "The file could not be parsed. Please use CSV with day,time,location columns.",
-    );
-    event.target.value = "";
   };
 
   const handleSave = () => {
@@ -182,7 +191,7 @@ export function TimetableSelector({
                     .map((stop) => (
                       <li
                         key={`${timetable.id}-${stop.position}`}
-                        className="flex gap-2"
+                        className="grid grid-cols-[6rem_4rem_1fr] gap-x-2 gap-y-1"
                       >
                         <span className="w-24 font-medium">
                           {stop.dayOfWeek ?? "—"}
@@ -190,7 +199,21 @@ export function TimetableSelector({
                         <span className="w-16">
                           {formatTime(stop.startTime)}
                         </span>
-                        <span>{stop.buildingName}</span>
+                        <span>
+                          {stop.buildingName}{stop.room ? `, ${stop.room}` : ""}
+                        </span>
+                        {(stop.subjectCode || stop.subjectDescription || stop.activity) && (
+                          <span className="col-span-3 text-xs text-muted">
+                            {[stop.subjectCode, stop.subjectDescription, stop.classGroup, stop.activity]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        )}
+                        {stop.classDates && (
+                          <span className="col-span-3 text-xs text-muted">
+                            Classes: {stop.classDates}
+                          </span>
+                        )}
                       </li>
                     ))}
                 </ul>
@@ -214,14 +237,14 @@ export function TimetableSelector({
           </div>
 
           <p className="text-center text-base text-primary">
-            Upload your class timetable (CSV or iCal format)
+            Upload an Allocate+ Excel timetable (.xls or .xlsx)
           </p>
 
           <div className="mt-5 flex justify-center">
             <label className="inline-flex cursor-pointer rounded-md bg-accent px-6 py-3 text-base font-bold text-white shadow-sm transition hover:bg-accent-dark focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2">
               <input
                 type="file"
-                accept=".csv,.ics,text/csv,text/calendar"
+                accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="hidden"
                 onChange={handleFileUpload}
               />
@@ -311,8 +334,19 @@ export function TimetableSelector({
                     className="rounded-md bg-accent px-4 py-2 text-lg font-bold text-white transition hover:bg-accent-dark"
                     aria-label={`Remove class ${index + 1}`}
                   >
-                    +
+                    ×
                   </button>
+                  {(row.subjectCode || row.subjectDescription || row.activity || row.classDates || row.sourceLocation) && (
+                    <p className="col-span-4 text-xs text-muted">
+                      {[row.subjectCode, row.subjectDescription, row.classGroup, row.activity]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      {row.room ? ` · Room ${row.room}` : ""}
+                      {row.duration ? ` · ${row.duration}` : ""}
+                      {row.classDates ? ` · ${row.classDates}` : ""}
+                      {row.sourceLocation ? ` · Allocate+ location: ${row.sourceLocation}` : ""}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
