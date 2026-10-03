@@ -53,6 +53,16 @@ export const timetableBuildings = pgTable(
     position: integer("position").notNull(),
     dayOfWeek: dayOfWeek("day_of_week"),
     startTime: time("start_time"),
+    subjectCode: text("subject_code"),
+    subjectDescription: text("subject_description"),
+    classGroup: text("class_group"),
+    activity: text("activity"),
+    campus: text("campus"),
+    sourceLocation: text("source_location"),
+    room: text("room"),
+    staff: text("staff"),
+    duration: text("duration"),
+    classDates: text("class_dates"),
   },
   (table) => [
     uniqueIndex("timetable_buildings_timetable_id_position_idx").on(
