@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 export default async function AdminLoginPage() {
   const session = await getSession();
   if (session) {
-    redirect(session.role === "admin" ? "/admins/feedback" : "/");
+    redirect(session.role === "admin" ? "/admin/feedback" : "/");
   }
 
   return (

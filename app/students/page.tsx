@@ -19,7 +19,7 @@ export default async function StudentsPage() {
         </div>
 
         <Link
-          href="/admins/feedback"
+          href="/admin/feedback"
           className="self-start rounded-md bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-dark"
         >
           View all feedback

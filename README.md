@@ -44,7 +44,8 @@ Student sign-up is available at `/signup`. Administrator sign-up uses
 reusable until removed from the list; rotate them after distribution or use.
 If the variable is empty, no administrator can sign up. Never commit real codes
 or put them in a `NEXT_PUBLIC_` variable. Existing admins log in at
-`/admin/login`.
+`/admin/login`. The admin directory and feedback pages are available at
+`/admin` and `/admin/feedback` to authenticated administrators.
 
 ## Database
 
