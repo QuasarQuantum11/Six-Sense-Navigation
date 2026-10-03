@@ -3,8 +3,11 @@ import { Pool } from "pg";
 
 // Fill in each building's location as decimal degrees. A quick way is to
 // right-click the building's main entrance in Google Maps, which copies
-// "latitude, longitude" (latitude first). Buildings left as null are skipped,
-// so any coordinates already in the database are not overwritten.
+// "latitude, longitude" (latitude first). Buildings left as null are skipped.
+//
+// These only fill in missing locations: a building that already has
+// coordinates (e.g. corrected by an admin on /admins/buildings) keeps them.
+// To change an existing location, edit it on that page instead.
 const buildingLocations = [
   { name: "Learning and Teaching Building", latitude: -37.91329573181047, longitude: 145.13278055602936 },
   { name: "Science Building", latitude: null, longitude: null },
@@ -55,17 +58,38 @@ async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
   try {
+    let filled = 0;
+    const kept = [];
+
     for (const { name, latitude, longitude } of located) {
-      await pool.query(
+      // The WHERE clause makes the update a no-op (no row returned) when the
+      // building already has a location. xmax = 0 means the row was inserted.
+      const { rows } = await pool.query(
         `INSERT INTO buildings (name, latitude, longitude)
          VALUES ($1, $2, $3)
          ON CONFLICT (name) DO UPDATE
-           SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude`,
+           SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude
+           WHERE buildings.latitude IS NULL OR buildings.longitude IS NULL
+         RETURNING (xmax = 0) AS inserted`,
         [name, latitude, longitude],
       );
-      console.log(`Set location for ${name}: ${latitude}, ${longitude}`);
+
+      if (rows.length === 0) {
+        kept.push(name);
+        continue;
+      }
+      filled += 1;
+      console.log(
+        `${rows[0].inserted ? "Added" : "Set location for"} ${name}: ${latitude}, ${longitude}`,
+      );
     }
-    console.log(`Seeded locations for ${located.length} buildings`);
+
+    console.log(`Filled locations for ${filled} buildings`);
+    if (kept.length > 0) {
+      console.log(
+        `Kept existing locations for ${kept.length}: ${kept.join(", ")}`,
+      );
+    }
     if (skipped.length > 0) {
       console.log(
         `Skipped ${skipped.length} without coordinates: ${skipped.map(({ name }) => name).join(", ")}`,
