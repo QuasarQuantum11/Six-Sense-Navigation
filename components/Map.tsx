@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import BuildingSearch from "@/components/map/building-search";
+import type { BuildingLocation } from "@/lib/buildings/search";
 
 // Indoor navigation data returned by the LTB backend.
 type IndoorNode = {
@@ -56,7 +58,12 @@ export default function Map() {
     const endMarkerRef = useRef<L.Marker | null>(null);
     const routeLayerRef = useRef<L.Polyline | null>(null);
     const ltbRouteLayerRef = useRef<L.Polyline | null>(null);
+    const searchMarkerRef = useRef<L.CircleMarker | null>(null);
     const destinationRef = useRef("");
+
+    // Building search: located campus buildings from the database.
+    const [buildings, setBuildings] = useState<BuildingLocation[]>([]);
+    const [buildingsError, setBuildingsError] = useState("");
 
     // Indoor navigation state: room list, selected destination, and floor route.
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
@@ -109,6 +116,21 @@ export default function Map() {
                         "Failed to load navigation graph:",
                         error
                     );
+                });
+
+            // OUTDOOR MAP: load buildings for the building search.
+            fetch("/api/buildings")
+                .then((response) => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then((data) => {
+                    setBuildings(data.buildings);
+                    setBuildingsError("");
+                })
+                .catch((error) => {
+                    setBuildingsError("Could not load buildings for search.");
+                    console.warn("Failed to load buildings:", error);
                 });
 
             // INDOOR MAP: load LTB rooms and indoor graph nodes.
@@ -202,6 +224,37 @@ export default function Map() {
             requestAnimationFrame(() => mapInstance.current?.invalidateSize());
         }
     }, [view]);
+
+    // OUTDOOR MAP: mark a searched building and pan the map to it.
+    const showBuilding = (building: BuildingLocation) => {
+        const map = mapInstance.current;
+        if (!map) return;
+
+        const position: L.LatLngExpression = [building.latitude, building.longitude];
+        if (searchMarkerRef.current) {
+            map.removeLayer(searchMarkerRef.current);
+        }
+        // A circle keeps it distinct from the route start/end pins. Stop clicks
+        // on it bubbling to the map, where they would set a route point.
+        searchMarkerRef.current = L.circleMarker(position, {
+            radius: 10,
+            color: "#c2410c",
+            weight: 3,
+            fillColor: "#f97316",
+            fillOpacity: 0.9,
+            bubblingMouseEvents: false,
+        })
+            .bindPopup(building.name)
+            .addTo(map)
+            .openPopup();
+
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduceMotion) {
+            map.setView(position, 18);
+        } else {
+            map.flyTo(position, 18, { duration: 1 });
+        }
+    };
 
     // INDOOR MAP: prepare selectable LTB rooms and floors in the route.
     const roomNodes = Object.entries(indoorNodes)
@@ -305,8 +358,10 @@ export default function Map() {
             />
 
             {view === "outdoor" && (
-                <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
-                    <h2 className="text-xl font-semibold text-slate-900">Route to LTB</h2>
+                <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="Campus map controls">
+                    <BuildingSearch buildings={buildings} error={buildingsError} onSelect={showBuilding} />
+
+                    <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2>
                     <p className="mt-2 text-sm text-slate-600">
                         Choose a room, click the campus map once for your starting point, then calculate the route.
                         With a room selected, another map click moves the starting point.
