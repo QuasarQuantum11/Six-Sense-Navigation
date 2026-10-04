@@ -222,6 +222,42 @@ def get_graph():
     except Exception as e:
         return {"error": str(e)}
 
+# Search campus buildings
+@app.get("/search/buildings")
+def search_buildings(q: str):
+    try:
+        query = q.strip().lower()
+        print("SEARCH QUERY:", query)
+
+        for node, data in G.nodes(data=True):
+            if "campus" in str(data).lower():
+                print("CAMPUS DATA:", node, data)
+                break
+
+        if not query:
+            return []
+
+        buildings = {}
+
+        for node, data in G.nodes(data=True):
+            name = data.get("name") or data.get("building")
+
+            if not name:
+                continue
+
+            if query in str(name).lower():
+                buildings[str(node)] = {
+                    "id": str(node),
+                    "name": str(name),
+                    "latitude": float(data["y"]),
+                    "longitude": float(data["x"]),
+                }
+
+        return list(buildings.values())
+
+    except Exception as e:
+        return {"error": str(e)}
+
 # Local runner (For local testing)
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

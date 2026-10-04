@@ -71,6 +71,44 @@ export default function Map() {
     const [routeError, setRouteError] = useState("");
     const [nodesError, setNodesError] = useState("");
 
+    const [buildingSearch, setBuildingSearch] = useState("");
+    const [buildings, setBuildings] = useState<
+        { id: string; name: string; latitude: number; longitude: number }[]
+    >([]);
+    const [buildingSearchLoading, setBuildingSearchLoading] = useState(false);
+    const [buildingSearchError, setBuildingSearchError] = useState("");
+
+    const searchBuildings = async () => {
+    if (!buildingSearch.trim()) {
+        setBuildings([]);
+        return;
+    }
+
+    setBuildingSearchLoading(true);
+    setBuildingSearchError("");
+
+    try {
+        const response = await fetch(
+            `${API_URL}/search/buildings?q=${encodeURIComponent(
+                buildingSearch
+            )}`
+        );
+
+        if (!response.ok) {
+            throw new Error("Failed to search buildings");
+        }
+
+        const data = await response.json();
+        setBuildings(data);
+    } catch (error) {
+        console.error(error);
+        setBuildingSearchError("Unable to search buildings.");
+        setBuildings([]);
+    } finally {
+        setBuildingSearchLoading(false);
+    }
+};
+
     useEffect(() => {
         if (!mapContainer.current) return;
 
@@ -307,6 +345,78 @@ export default function Map() {
             {view === "outdoor" && (
                 <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
                     <h2 className="text-xl font-semibold text-slate-900">Route to LTB</h2>
+
+                    <div className="mt-4">
+                        <label
+                            htmlFor="building-search"
+                            className="block text-sm font-medium text-slate-800"
+                        >
+                            Search campus buildings
+                        </label>
+
+                        <div className="mt-1 flex gap-2">
+                            <input
+                                id="building-search"
+                                type="text"
+                                value={buildingSearch}
+                                onChange={(event) => setBuildingSearch(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        searchBuildings();
+                                    }
+                                }}
+                                placeholder="e.g. MSIS, Campus Centre..."
+                                className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
+                            />
+
+                            <button
+                                type="button"
+                                onClick={searchBuildings}
+                                disabled={buildingSearchLoading}
+                                className="rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {buildingSearchLoading ? "..." : "Search"}
+                            </button>
+                        </div>
+
+                        {buildingSearchError && (
+                            <p className="mt-2 text-sm text-red-700" role="alert">
+                                {buildingSearchError}
+                            </p>
+                        )}
+
+                        {buildings.length > 0 && (
+                            <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
+                                {buildings.map((building) => (
+                                    <button
+                                        key={building.id}
+                                        type="button"
+                                        className="block w-full border-b border-slate-100 px-3 py-3 text-left text-sm last:border-b-0 hover:bg-slate-50"
+                                        onClick={() => {
+                                            setBuildingSearch(building.name);
+                                            setBuildings([]);
+
+                                            if (mapInstance.current) {
+                                                mapInstance.current.setView(
+                                                    [building.latitude, building.longitude],
+                                                    18
+                                                );
+                                            }
+                                        }}
+                                    >
+                                        <span className="font-medium text-slate-900">
+                                            {building.name}
+                                        </span>
+
+                                        <span className="mt-0.5 block text-xs text-slate-500">
+                                            Building location
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     <p className="mt-2 text-sm text-slate-600">
                         Choose a room, click the campus map once for your starting point, then calculate the route.
                         With a room selected, another map click moves the starting point.
