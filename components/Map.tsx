@@ -58,6 +58,13 @@ export default function Map() {
     const ltbRouteLayerRef = useRef<L.Polyline | null>(null);
     const destinationRef = useRef("");
 
+    const selectedBuildingRef = useRef<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+} | null>(null);
+
     // Indoor navigation state: room list, selected destination, and floor route.
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
     const [destination, setDestination] = useState("");
@@ -77,6 +84,13 @@ export default function Map() {
     >([]);
     const [buildingSearchLoading, setBuildingSearchLoading] = useState(false);
     const [buildingSearchError, setBuildingSearchError] = useState("");
+
+    const [selectedBuilding, setSelectedBuilding] = useState<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+} | null>(null);
 
     const searchBuildings = async () => {
     if (!buildingSearch.trim()) {
@@ -166,7 +180,68 @@ export default function Map() {
 
             // OUTDOOR MAP: select points and calculate an outdoor route.
             map.on("click", async (e) => {
+                console.log("Clicked coordinates:", e.latlng.lat, e.latlng.lng);
                 setRouteError("");
+                
+                if (selectedBuildingRef.current) {
+                    if (startMarkerRef.current) {
+                        startMarkerRef.current.setLatLng(e.latlng);
+                    } else {
+                        startMarkerRef.current = L.marker(e.latlng).addTo(map);
+                    }
+
+                    if (endMarkerRef.current) {
+                        map.removeLayer(endMarkerRef.current);
+                    }
+
+                    endMarkerRef.current = L.marker([
+                        selectedBuildingRef.current.latitude,
+                        selectedBuildingRef.current.longitude,
+                    ]).addTo(map);
+
+                    if (routeLayerRef.current) {
+                        map.removeLayer(routeLayerRef.current);
+                        routeLayerRef.current = null;
+                    }
+
+                    if (ltbRouteLayerRef.current) {
+                        map.removeLayer(ltbRouteLayerRef.current);
+                        ltbRouteLayerRef.current = null;
+                    }
+
+                    setStartSelected(true);
+
+                    try {
+                        const response = await fetch(
+                            `${API_URL}/api/building-route?start_lat=${e.latlng.lat}&start_lon=${e.latlng.lng}&end_lat=${selectedBuildingRef.current!.latitude}&end_lon=${selectedBuildingRef.current!.longitude}`
+                        );
+
+                        if (!response.ok) {
+                            throw new Error("Failed to calculate building route");
+                        }
+
+                        const data = await response.json();
+
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+
+                        routeLayerRef.current = L.polyline(data.route, {
+                            color: "blue",
+                            weight: 5,
+                        }).addTo(map);
+
+                        map.fitBounds(routeLayerRef.current.getBounds(), {
+                            padding: [30, 30],
+                        });
+                    } catch (error) {
+                        console.error(error);
+                        setRouteError("Unable to calculate route to this building.");
+                    }
+
+                    return;
+                }
+                
                 if (destinationRef.current) {
                     // With an LTB room selected, every click moves the outdoor
                     // starting point instead of creating a second destination.
@@ -344,7 +419,7 @@ export default function Map() {
 
             {view === "outdoor" && (
                 <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
-                    <h2 className="text-xl font-semibold text-slate-900">Route to LTB</h2>
+                    <h2 className="text-xl font-semibold text-slate-900">Navigate to Building</h2>
 
                     <div className="mt-4">
                         <label
@@ -395,6 +470,8 @@ export default function Map() {
                                         onClick={() => {
                                             setBuildingSearch(building.name);
                                             setBuildings([]);
+                                            setSelectedBuilding(building);
+                                            selectedBuildingRef.current = building;
 
                                             if (mapInstance.current) {
                                                 mapInstance.current.setView(

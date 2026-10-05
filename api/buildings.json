@@ -1,0 +1,86 @@
+[
+  {
+    "id": "ltb",
+    "name": "Learning and Teaching Building (LTB)",
+    "latitude": -37.91390981770357,
+    "longitude": 145.13254076242447
+  },
+  {
+    "id": "campus-centre",
+    "name": "Campus Centre",
+    "latitude": -37.911786292363466,
+    "longitude": 145.13297863304618
+  },
+  {
+    "id": "menzies",
+    "name": "Menzies Building",
+    "latitude": -37.912676127832164,
+    "longitude": 145.13266012072566
+  },
+  {
+    "id": "david-derham",
+    "name": "David Derham School of Law",
+    "latitude": -37.912953339536784,
+    "longitude": 145.13196811079982
+  },
+  {
+    "id": "biomedical-ltb",
+    "name": "Biomedical Learning and Teaching Building",
+    "latitude": -37.91269940519104,
+    "longitude": 145.12968957424167
+  },
+  {
+    "id": "woodside",
+    "name": "Woodside Building",
+    "latitude": -37.90954208162674,
+    "longitude": 145.13523906469345
+  },
+  {
+    "id": "hargrave-andrew",
+    "name": "Hargrave-Andrew Library",
+    "latitude": -37.90967751919917,
+    "longitude": 145.13197749853134
+  },
+  {
+    "id": "monash-it",
+    "name": "Monash IT",
+    "latitude": -37.910794869658716,
+    "longitude": 145.13386577367785
+  },
+  {
+    "id": "engineering",
+    "name": "Engineering",
+    "latitude": -37.909783329629164,
+    "longitude": 145.1345095038414
+  },
+  {
+    "id": "monash-sport",
+    "name": "Monash Sport",
+    "latitude": -37.91302105521429,
+    "longitude": 145.1364353299141
+  },
+  {
+    "id": "robert-blackwood",
+    "name": "Robert Blackwood Hall",
+    "latitude": -37.91278405007035,
+    "longitude": 145.13529270887378
+  },
+  {
+    "id": "chancellery",
+    "name": "Chancellery",
+    "latitude": -37.91223385661398,
+    "longitude": 145.1347750425339
+  },
+  {
+    "id": "sir-louis-matheson",
+    "name": "Sir Louis Matheson Library",
+    "latitude": -37.91300412630075,
+    "longitude": 145.13426274061206
+  },
+  {
+    "id": "religious-centre",
+    "name": "Religious Centre",
+    "latitude": -37.911891041687426,
+    "longitude": 145.1341876387596
+  }
+]
