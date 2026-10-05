@@ -106,7 +106,7 @@ export async function updateBuilding(
       .returning({ id: buildings.id });
 
     if (updated.length === 0) {
-      return { message: "Building not found. It may have been deleted." };
+      return { message: "Building not found. It may have been merged into another building." };
     }
   } catch (error) {
     // Another admin may have taken the name since the check above.
@@ -118,27 +118,6 @@ export async function updateBuilding(
 
   revalidatePath("/admins/buildings");
   return {};
-}
-
-export async function deleteBuilding(buildingId: string) {
-  await requireAdmin();
-
-  if (!buildingIdSchema.safeParse(buildingId).success) {
-    throw new Error("Building not found.");
-  }
-
-  // Timetable entries for this building are removed by the ON DELETE CASCADE
-  // on timetable_buildings.building_id.
-  const deleted = await db
-    .delete(buildings)
-    .where(eq(buildings.id, buildingId))
-    .returning({ id: buildings.id });
-
-  if (deleted.length === 0) {
-    throw new Error("Building not found. It may have already been deleted.");
-  }
-
-  revalidatePath("/admins/buildings");
 }
 
 // Merges a duplicate building into another: the duplicate's timetable entries
@@ -159,7 +138,7 @@ export async function mergeBuilding(duplicateId: string, keepId: string) {
   }
 
   await db.transaction(async (tx) => {
-    // Lock both rows so a concurrent edit or delete can't interleave.
+    // Lock both rows so a concurrent edit or merge can't interleave.
     const rows = await tx
       .select()
       .from(buildings)
@@ -168,7 +147,7 @@ export async function mergeBuilding(duplicateId: string, keepId: string) {
     const duplicate = rows.find((row) => row.id === duplicateId);
     const keep = rows.find((row) => row.id === keepId);
     if (!duplicate || !keep) {
-      throw new Error("Building not found. It may have been deleted or merged already.");
+      throw new Error("Building not found. It may have been merged already.");
     }
 
     await tx
