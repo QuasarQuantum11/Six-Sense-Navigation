@@ -58,7 +58,14 @@ export default function Map() {
     const ltbRouteLayerRef = useRef<L.Polyline | null>(null);
     const destinationRef = useRef("");
 
-    const selectedBuildingRef = useRef<{
+    const selectedDepartureRef = useRef<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+} | null>(null);
+
+const selectedDestinationRef = useRef<{
     id: string;
     name: string;
     latitude: number;
@@ -78,50 +85,79 @@ export default function Map() {
     const [routeError, setRouteError] = useState("");
     const [nodesError, setNodesError] = useState("");
 
-    const [buildingSearch, setBuildingSearch] = useState("");
-    const [buildings, setBuildings] = useState<
+    const [departureSearch, setDepartureSearch] = useState("");
+    const [destinationSearch, setDestinationSearch] = useState("");
+
+    const [departureResults, setDepartureResults] = useState<
         { id: string; name: string; latitude: number; longitude: number }[]
     >([]);
+
+    const [destinationResults, setDestinationResults] = useState<
+        { id: string; name: string; latitude: number; longitude: number }[]
+    >([]);
+
     const [buildingSearchLoading, setBuildingSearchLoading] = useState(false);
     const [buildingSearchError, setBuildingSearchError] = useState("");
 
-    const [selectedBuilding, setSelectedBuilding] = useState<{
-    id: string;
-    name: string;
-    latitude: number;
-    longitude: number;
-} | null>(null);
+    const [selectedDeparture, setSelectedDeparture] = useState<{
+        id: string;
+        name: string;
+        latitude: number;
+        longitude: number;
+    } | null>(null);
 
-    const searchBuildings = async () => {
-    if (!buildingSearch.trim()) {
-        setBuildings([]);
-        return;
-    }
+    const [selectedDestination, setSelectedDestination] = useState<{
+        id: string;
+        name: string;
+        latitude: number;
+        longitude: number;
+    } | null>(null);
 
-    setBuildingSearchLoading(true);
-    setBuildingSearchError("");
+    const searchBuildings = async (type: "departure" | "destination") => {
+        const query =
+            type === "departure" ? departureSearch : destinationSearch;
 
-    try {
-        const response = await fetch(
-            `${API_URL}/search/buildings?q=${encodeURIComponent(
-                buildingSearch
-            )}`
-        );
-
-        if (!response.ok) {
-            throw new Error("Failed to search buildings");
+        if (!query.trim()) {
+            if (type === "departure") {
+                setDepartureResults([]);
+            } else {
+                setDestinationResults([]);
+            }
+            return;
         }
 
-        const data = await response.json();
-        setBuildings(data);
-    } catch (error) {
-        console.error(error);
-        setBuildingSearchError("Unable to search buildings.");
-        setBuildings([]);
-    } finally {
-        setBuildingSearchLoading(false);
-    }
-};
+        setBuildingSearchLoading(true);
+        setBuildingSearchError("");
+
+        try {
+            const response = await fetch(
+                `${API_URL}/search/buildings?q=${encodeURIComponent(query)}`
+            );
+
+            if (!response.ok) {
+                throw new Error("Failed to search buildings");
+            }
+
+            const data = await response.json();
+
+            if (type === "departure") {
+                setDepartureResults(data);
+            } else {
+                setDestinationResults(data);
+            }
+        } catch (error) {
+            console.error(error);
+            setBuildingSearchError("Unable to search buildings.");
+
+            if (type === "departure") {
+                setDepartureResults([]);
+            } else {
+                setDestinationResults([]);
+            }
+        } finally {
+            setBuildingSearchLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (!mapContainer.current) return;
@@ -183,21 +219,27 @@ export default function Map() {
                 console.log("Clicked coordinates:", e.latlng.lat, e.latlng.lng);
                 setRouteError("");
                 
-                if (selectedBuildingRef.current) {
-                    if (startMarkerRef.current) {
-                        startMarkerRef.current.setLatLng(e.latlng);
-                    } else {
-                        startMarkerRef.current = L.marker(e.latlng).addTo(map);
+                if (selectedDepartureRef.current || selectedDestinationRef.current) {
+                    if (!selectedDepartureRef.current) {
+                        if (startMarkerRef.current) {
+                            startMarkerRef.current.setLatLng(e.latlng);
+                        } else {
+                            startMarkerRef.current = L.marker(e.latlng).addTo(map);
+                        }
+
+                        setStartSelected(true);
+                        return;
                     }
 
-                    if (endMarkerRef.current) {
-                        map.removeLayer(endMarkerRef.current);
-                    }
+                    if (!selectedDestinationRef.current) {
+                        if (endMarkerRef.current) {
+                            endMarkerRef.current.setLatLng(e.latlng);
+                        } else {
+                            endMarkerRef.current = L.marker(e.latlng).addTo(map);
+                        }
 
-                    endMarkerRef.current = L.marker([
-                        selectedBuildingRef.current.latitude,
-                        selectedBuildingRef.current.longitude,
-                    ]).addTo(map);
+                        return;
+                    }
 
                     if (routeLayerRef.current) {
                         map.removeLayer(routeLayerRef.current);
@@ -209,11 +251,9 @@ export default function Map() {
                         ltbRouteLayerRef.current = null;
                     }
 
-                    setStartSelected(true);
-
                     try {
                         const response = await fetch(
-                            `${API_URL}/api/building-route?start_lat=${e.latlng.lat}&start_lon=${e.latlng.lng}&end_lat=${selectedBuildingRef.current!.latitude}&end_lon=${selectedBuildingRef.current!.longitude}`
+                            `${API_URL}/api/building-route?start_lat=${selectedDepartureRef.current.latitude}&start_lon=${selectedDepartureRef.current.longitude}&end_lat=${selectedDestinationRef.current.latitude}&end_lon=${selectedDestinationRef.current.longitude}`
                         );
 
                         if (!response.ok) {
@@ -236,7 +276,7 @@ export default function Map() {
                         });
                     } catch (error) {
                         console.error(error);
-                        setRouteError("Unable to calculate route to this building.");
+                        setRouteError("Unable to calculate route between these buildings.");
                     }
 
                     return;
@@ -421,76 +461,171 @@ export default function Map() {
                 <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
                     <h2 className="text-xl font-semibold text-slate-900">Navigate to Building</h2>
 
-                    <div className="mt-4">
-                        <label
-                            htmlFor="building-search"
-                            className="block text-sm font-medium text-slate-800"
-                        >
-                            Search campus buildings
-                        </label>
-
-                        <div className="mt-1 flex gap-2">
-                            <input
-                                id="building-search"
-                                type="text"
-                                value={buildingSearch}
-                                onChange={(event) => setBuildingSearch(event.target.value)}
-                                onKeyDown={(event) => {
-                                    if (event.key === "Enter") {
-                                        searchBuildings();
-                                    }
-                                }}
-                                placeholder="e.g. MSIS, Campus Centre..."
-                                className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
-                            />
-
-                            <button
-                                type="button"
-                                onClick={searchBuildings}
-                                disabled={buildingSearchLoading}
-                                className="rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    <div className="mt-4 space-y-4">
+                        {/* Departure search */}
+                        <div>
+                            <label
+                                htmlFor="departure-search"
+                                className="block text-sm font-medium text-slate-800"
                             >
-                                {buildingSearchLoading ? "..." : "Search"}
-                            </button>
+                                From
+                            </label>
+
+                            <div className="mt-1 flex gap-2">
+                                <input
+                                    id="departure-search"
+                                    type="text"
+                                    value={departureSearch}
+                                    onChange={(event) => setDepartureSearch(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            searchBuildings("departure");
+                                        }
+                                    }}
+                                    placeholder="Search departure building..."
+                                    className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => searchBuildings("departure")}
+                                    disabled={buildingSearchLoading}
+                                    className="rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {buildingSearchLoading ? "..." : "Search"}
+                                </button>
+                            </div>
+
+                            {departureResults.length > 0 && (
+                                <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
+                                    {departureResults.map((building) => (
+                                        <button
+                                            key={building.id}
+                                            type="button"
+                                            className="block w-full border-b border-slate-100 px-3 py-3 text-left text-sm last:border-b-0 hover:bg-slate-50"
+                                            onClick={() => {
+                                                setDepartureSearch(building.name);
+                                                setDepartureResults([]);
+                                                setSelectedDeparture(building);
+                                                selectedDepartureRef.current = building;
+
+                                                if (mapInstance.current) {
+                                                    if (startMarkerRef.current) {
+                                                        startMarkerRef.current.setLatLng([
+                                                            building.latitude,
+                                                            building.longitude,
+                                                        ]);
+                                                    } else {
+                                                        startMarkerRef.current = L.marker([
+                                                            building.latitude,
+                                                            building.longitude,
+                                                        ]).addTo(mapInstance.current);
+                                                    }
+
+                                                    mapInstance.current.setView(
+                                                        [building.latitude, building.longitude],
+                                                        18
+                                                    );
+                                                }
+                                            }}
+                                        >
+                                            <span className="font-medium text-slate-900">
+                                                {building.name}
+                                            </span>
+
+                                            <span className="mt-0.5 block text-xs text-slate-500">
+                                                Departure location
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Destination search */}
+                        <div>
+                            <label
+                                htmlFor="destination-search"
+                                className="block text-sm font-medium text-slate-800"
+                            >
+                                To
+                            </label>
+
+                            <div className="mt-1 flex gap-2">
+                                <input
+                                    id="destination-search"
+                                    type="text"
+                                    value={destinationSearch}
+                                    onChange={(event) => setDestinationSearch(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            searchBuildings("destination");
+                                        }
+                                    }}
+                                    placeholder="Search destination building..."
+                                    className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => searchBuildings("destination")}
+                                    disabled={buildingSearchLoading}
+                                    className="rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {buildingSearchLoading ? "..." : "Search"}
+                                </button>
+                            </div>
+
+                            {destinationResults.length > 0 && (
+                                <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
+                                    {destinationResults.map((building) => (
+                                        <button
+                                            key={building.id}
+                                            type="button"
+                                            className="block w-full border-b border-slate-100 px-3 py-3 text-left text-sm last:border-b-0 hover:bg-slate-50"
+                                            onClick={() => {
+                                                setDestinationSearch(building.name);
+                                                setDestinationResults([]);
+                                                setSelectedDestination(building);
+                                                selectedDestinationRef.current = building;
+
+                                                if (mapInstance.current) {
+                                                    if (endMarkerRef.current) {
+                                                        endMarkerRef.current.setLatLng([
+                                                            building.latitude,
+                                                            building.longitude,
+                                                        ]);
+                                                    } else {
+                                                        endMarkerRef.current = L.marker([
+                                                            building.latitude,
+                                                            building.longitude,
+                                                        ]).addTo(mapInstance.current);
+                                                    }
+
+                                                    mapInstance.current.setView(
+                                                        [building.latitude, building.longitude],
+                                                        18
+                                                    );
+                                                }
+                                            }}
+                                        >
+                                            <span className="font-medium text-slate-900">
+                                                {building.name}
+                                            </span>
+
+                                            <span className="mt-0.5 block text-xs text-slate-500">
+                                                Destination location
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {buildingSearchError && (
-                            <p className="mt-2 text-sm text-red-700" role="alert">
+                            <p className="text-sm text-red-700" role="alert">
                                 {buildingSearchError}
                             </p>
-                        )}
-
-                        {buildings.length > 0 && (
-                            <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
-                                {buildings.map((building) => (
-                                    <button
-                                        key={building.id}
-                                        type="button"
-                                        className="block w-full border-b border-slate-100 px-3 py-3 text-left text-sm last:border-b-0 hover:bg-slate-50"
-                                        onClick={() => {
-                                            setBuildingSearch(building.name);
-                                            setBuildings([]);
-                                            setSelectedBuilding(building);
-                                            selectedBuildingRef.current = building;
-
-                                            if (mapInstance.current) {
-                                                mapInstance.current.setView(
-                                                    [building.latitude, building.longitude],
-                                                    18
-                                                );
-                                            }
-                                        }}
-                                    >
-                                        <span className="font-medium text-slate-900">
-                                            {building.name}
-                                        </span>
-
-                                        <span className="mt-0.5 block text-xs text-slate-500">
-                                            Building location
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
                         )}
                     </div>
 
