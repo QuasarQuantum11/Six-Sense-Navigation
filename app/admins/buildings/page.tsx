@@ -124,7 +124,10 @@ export default async function BuildingsPage() {
                       {new Date(building.createdAt).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
-                      <BuildingRowActions building={building} />
+                      <BuildingRowActions
+                        building={building}
+                        allBuildings={allBuildings}
+                      />
                     </td>
                   </tr>
                 );

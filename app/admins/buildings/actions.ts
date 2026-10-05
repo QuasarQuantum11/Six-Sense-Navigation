@@ -1,11 +1,11 @@
 "use server";
 
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
-import { buildings } from "@/lib/timetables/schema";
+import { buildings, timetableBuildings } from "@/lib/timetables/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import {
   buildingSchema,
@@ -137,6 +137,57 @@ export async function deleteBuilding(buildingId: string) {
   if (deleted.length === 0) {
     throw new Error("Building not found. It may have already been deleted.");
   }
+
+  revalidatePath("/admins/buildings");
+}
+
+// Merges a duplicate building into another: the duplicate's timetable entries
+// move to the kept building, then the duplicate is deleted. The kept building
+// keeps its own name and location, but takes the duplicate's location if it
+// has none.
+export async function mergeBuilding(duplicateId: string, keepId: string) {
+  await requireAdmin();
+
+  if (
+    !buildingIdSchema.safeParse(duplicateId).success ||
+    !buildingIdSchema.safeParse(keepId).success
+  ) {
+    throw new Error("Building not found.");
+  }
+  if (duplicateId === keepId) {
+    throw new Error("Choose a different building to merge into.");
+  }
+
+  await db.transaction(async (tx) => {
+    // Lock both rows so a concurrent edit or delete can't interleave.
+    const rows = await tx
+      .select()
+      .from(buildings)
+      .where(inArray(buildings.id, [duplicateId, keepId]))
+      .for("update");
+    const duplicate = rows.find((row) => row.id === duplicateId);
+    const keep = rows.find((row) => row.id === keepId);
+    if (!duplicate || !keep) {
+      throw new Error("Building not found. It may have been deleted or merged already.");
+    }
+
+    await tx
+      .update(timetableBuildings)
+      .set({ buildingId: keepId })
+      .where(eq(timetableBuildings.buildingId, duplicateId));
+
+    const keepHasLocation = keep.latitude !== null && keep.longitude !== null;
+    const duplicateHasLocation =
+      duplicate.latitude !== null && duplicate.longitude !== null;
+    if (!keepHasLocation && duplicateHasLocation) {
+      await tx
+        .update(buildings)
+        .set({ latitude: duplicate.latitude, longitude: duplicate.longitude })
+        .where(eq(buildings.id, keepId));
+    }
+
+    await tx.delete(buildings).where(eq(buildings.id, duplicateId));
+  });
 
   revalidatePath("/admins/buildings");
 }
