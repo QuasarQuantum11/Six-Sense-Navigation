@@ -220,31 +220,73 @@ const selectedDestinationRef = useRef<{
                 setRouteError("");
                 
                 if (selectedDepartureRef.current || selectedDestinationRef.current) {
-                    if (!selectedDepartureRef.current) {
-                        if (startMarkerRef.current) {
-                            startMarkerRef.current.setLatLng(e.latlng);
-                        } else {
+                        // Map-click navigation mode.
+                        // If the user clicks the map, use the clicks as the two route endpoints.
+                        if (!startMarkerRef.current) {
                             startMarkerRef.current = L.marker(e.latlng).addTo(map);
+                            setStartSelected(true);
+                            return;
                         }
 
-                        setStartSelected(true);
-                        return;
-                    }
-
-                    if (!selectedDestinationRef.current) {
+                        // If both markers already exist, start a new click-to-click route.
                         if (endMarkerRef.current) {
-                            endMarkerRef.current.setLatLng(e.latlng);
-                        } else {
-                            endMarkerRef.current = L.marker(e.latlng).addTo(map);
+                            map.removeLayer(startMarkerRef.current);
+                            map.removeLayer(endMarkerRef.current);
+
+                            startMarkerRef.current = L.marker(e.latlng).addTo(map);
+                            endMarkerRef.current = null;
+
+                            if (routeLayerRef.current) {
+                                map.removeLayer(routeLayerRef.current);
+                                routeLayerRef.current = null;
+                            }
+
+                            setStartSelected(true);
+                            return;
                         }
 
-                        return;
-                    }
+                        // Second click becomes the destination.
+                        endMarkerRef.current = L.marker(e.latlng).addTo(map);
 
-                    if (routeLayerRef.current) {
-                        map.removeLayer(routeLayerRef.current);
-                        routeLayerRef.current = null;
-                    }
+                        if (routeLayerRef.current) {
+                            map.removeLayer(routeLayerRef.current);
+                            routeLayerRef.current = null;
+                        }
+
+                        try {
+                            const start = startMarkerRef.current.getLatLng();
+                            const end = endMarkerRef.current.getLatLng();
+
+                            const response = await fetch(
+                                `${API_URL}/api/building-route?start_lat=${start.lat}&start_lon=${start.lng}&end_lat=${end.lat}&end_lon=${end.lng}`
+                            );
+
+                            if (!response.ok) {
+                                throw new Error("Failed to calculate outdoor route");
+                            }
+
+                            const data = await response.json();
+
+                            if (data.error) {
+                                throw new Error(data.error);
+                            }
+
+                            if (!data.route || data.route.length === 0) {
+                                throw new Error("No route returned");
+                            }
+
+                            routeLayerRef.current = L.polyline(data.route, {
+                                color: "blue",
+                                weight: 5,
+                            }).addTo(map);
+
+                            map.fitBounds(routeLayerRef.current.getBounds(), {
+                                padding: [30, 30],
+                            });
+                        } catch (error) {
+                            console.error("Outdoor route failed:", error);
+                            setRouteError("Could not calculate the outdoor route.");
+                        }
 
                     if (ltbRouteLayerRef.current) {
                         map.removeLayer(ltbRouteLayerRef.current);
@@ -261,6 +303,8 @@ const selectedDestinationRef = useRef<{
                         }
 
                         const data = await response.json();
+
+                        console.log("Building route response:", data);
 
                         if (data.error) {
                             throw new Error(data.error);
@@ -622,6 +666,66 @@ const selectedDestinationRef = useRef<{
                             )}
                         </div>
 
+                        {selectedDeparture && selectedDestination && (
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    if (!selectedDeparture || !selectedDestination) {
+                                        return;
+                                    }
+
+                                    setRouteError("");
+
+                                    if (routeLayerRef.current && mapInstance.current) {
+                                        mapInstance.current.removeLayer(routeLayerRef.current);
+                                        routeLayerRef.current = null;
+                                    }
+
+                                    try {
+                                        const response = await fetch(
+                                            `${API_URL}/api/building-route?start_lat=${selectedDeparture.latitude}&start_lon=${selectedDeparture.longitude}&end_lat=${selectedDestination.latitude}&end_lon=${selectedDestination.longitude}`
+                                        );
+
+                                        if (!response.ok) {
+                                            throw new Error("Failed to calculate building route");
+                                        }
+
+                                        const data = await response.json();
+
+                                        if (data.error) {
+                                            throw new Error(data.error);
+                                        }
+
+                                        if (!data.route || data.route.length === 0) {
+                                            throw new Error("No route returned");
+                                        }
+
+                                        if (mapInstance.current) {
+                                            routeLayerRef.current = L.polyline(data.route, {
+                                                color: "blue",
+                                                weight: 5,
+                                            }).addTo(mapInstance.current);
+
+                                            mapInstance.current.fitBounds(
+                                                routeLayerRef.current.getBounds(),
+                                                {
+                                                    padding: [30, 30],
+                                                }
+                                            );
+                                        }
+                                    } catch (error) {
+                                        console.error("Building route failed:", error);
+                                        setRouteError(
+                                            "Unable to calculate route between these buildings."
+                                        );
+                                    }
+                                }}
+                                className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                                Build Route
+                            </button>
+                        )}
+                        
                         {buildingSearchError && (
                             <p className="text-sm text-red-700" role="alert">
                                 {buildingSearchError}
