@@ -61,11 +61,9 @@ export default function Map() {
     const searchMarkerRef = useRef<L.CircleMarker | null>(null);
     const destinationRef = useRef("");
 
-<<<<<<< HEAD
     // Building search: located campus buildings from the database.
     const [buildings, setBuildings] = useState<BuildingLocation[]>([]);
     const [buildingsError, setBuildingsError] = useState("");
-=======
     const selectedDepartureRef = useRef<{
     id: string;
     name: string;
@@ -79,7 +77,6 @@ const selectedDestinationRef = useRef<{
     latitude: number;
     longitude: number;
 } | null>(null);
->>>>>>> main
 
     // Indoor navigation state: room list, selected destination, and floor route.
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
@@ -557,13 +554,16 @@ const selectedDestinationRef = useRef<{
             />
 
             {view === "outdoor" && (
-<<<<<<< HEAD
-                <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="Campus map controls">
+                // <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="Campus map controls">
+                //     <BuildingSearch buildings={buildings} error={buildingsError} onSelect={showBuilding} />
+
+                //     <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2>
+                    
+                <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
                     <BuildingSearch buildings={buildings} error={buildingsError} onSelect={showBuilding} />
 
-                    <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2>
-=======
-                <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
+                    {/* <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2> */}
+
                     <h2 className="text-xl font-semibold text-slate-900">Navigate to Building</h2>
 
                     <div className="mt-4 space-y-4">
@@ -794,7 +794,6 @@ const selectedDestinationRef = useRef<{
                         )}
                     </div>
 
->>>>>>> main
                     <p className="mt-2 text-sm text-slate-600">
                         Choose a room, click the campus map once for your starting point, then calculate the route.
                         With a room selected, another map click moves the starting point.
