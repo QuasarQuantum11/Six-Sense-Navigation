@@ -314,9 +314,14 @@ const selectedDestinationRef = useRef<{
                         ltbRouteLayerRef.current = null;
                     }
 
+                    // Only route between the searched buildings once both are chosen.
+                    const departure = selectedDepartureRef.current;
+                    const buildingDestination = selectedDestinationRef.current;
+                    if (!departure || !buildingDestination) return;
+
                     try {
                         const response = await fetch(
-                            `${API_URL}/api/building-route?start_lat=${selectedDepartureRef.current.latitude}&start_lon=${selectedDepartureRef.current.longitude}&end_lat=${selectedDestinationRef.current.latitude}&end_lon=${selectedDestinationRef.current.longitude}`
+                            `${API_URL}/api/building-route?start_lat=${departure.latitude}&start_lon=${departure.longitude}&end_lat=${buildingDestination.latitude}&end_lon=${buildingDestination.longitude}`
                         );
 
                         if (!response.ok) {
