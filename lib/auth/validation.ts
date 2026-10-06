@@ -25,6 +25,11 @@ export const signupSchema = z.object({
   walkingSpeed: walkingSpeedSchema,
 });
 
+// An empty or omitted password keeps the current password. Never trim passwords.
+export const profileUpdateSchema = signupSchema.extend({
+  password: passwordSchema.or(z.literal("")).optional(),
+});
+
 export const adminSignupSchema = signupSchema.omit({ walkingSpeed: true }).extend({
   inviteCode: z.string().trim().min(1, "Enter an invitation code"),
 });
