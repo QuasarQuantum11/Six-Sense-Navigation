@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { loginSchema, signupSchema } from "../validation";
+import { loginSchema, signupSchema, walkingSpeedSchema } from "../validation";
+
+describe("walking speed validation", () => {
+  it.each(["accessible", "normal", "fast"])("accepts %s", (speed) => {
+    expect(walkingSpeedSchema.safeParse(speed).success).toBe(true);
+  });
+
+  it.each(["flying", "", "Normal", null, 1.4])("rejects %j", (speed) => {
+    expect(walkingSpeedSchema.safeParse(speed).success).toBe(false);
+  });
+});
 
 describe("student sign-up validation", () => {
   const validSignup = {

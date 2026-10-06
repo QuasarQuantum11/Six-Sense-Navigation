@@ -5,11 +5,13 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import BuildingSearch from "@/components/map/building-search";
 import type { BuildingLocation } from "@/lib/buildings/search";
+import Link from "next/link";
 import {
     estimateWalkingMinutes,
     formatDistance,
     formatWalkingTime,
-    WALKING_SPEEDS_MPS,
+    walkingPaceKmh,
+    type WalkingSpeed,
 } from "@/lib/navigation/walking";
 
 // Leaflet looks for its default pin images at a path that doesn't exist once
@@ -114,7 +116,15 @@ const floorPlans: Record<string, string> = {
     "3": "/ltb/Floor-3.png",
 };
 
-export default function Map() {
+export default function Map({
+    walkingSpeed = "normal",
+    personalised = false,
+}: {
+    // The logged-in student's preferred pace, used for walking time estimates.
+    walkingSpeed?: WalkingSpeed;
+    // True when walkingSpeed comes from the student's profile.
+    personalised?: boolean;
+}) {
     // Shared Leaflet map references used by outdoor and indoor workflows.
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
@@ -521,11 +531,20 @@ export default function Map() {
                                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                                     <p className="text-sm font-medium text-blue-900">Estimated walking time</p>
                                     <p className="text-3xl font-bold text-blue-950">
-                                        {formatWalkingTime(estimateWalkingMinutes(pinRouteDistance))}
+                                        {formatWalkingTime(estimateWalkingMinutes(pinRouteDistance, walkingSpeed))}
                                     </p>
                                     <p className="text-sm text-blue-900">{formatDistance(pinRouteDistance)} walk</p>
                                     <p className="mt-1 text-xs text-blue-900">
-                                        At a normal walking pace of about {Math.round(WALKING_SPEEDS_MPS.normal * 3.6)} km/h.
+                                        {personalised ? (
+                                            <>
+                                                At your {walkingSpeed} walking pace of about {walkingPaceKmh(walkingSpeed)} km/h.{" "}
+                                                <Link href="/profile" className="underline hover:text-blue-950">
+                                                    Change pace
+                                                </Link>
+                                            </>
+                                        ) : (
+                                            <>At a normal walking pace of about {walkingPaceKmh("normal")} km/h.</>
+                                        )}
                                     </p>
                                 </div>
                             )}

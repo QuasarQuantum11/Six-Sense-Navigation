@@ -4,7 +4,16 @@ import {
   estimateWalkingMinutes,
   formatDistance,
   formatWalkingTime,
+  walkingPaceKmh,
 } from "../walking";
+
+describe("walkingPaceKmh", () => {
+  it("shows each walking speed as whole km/h", () => {
+    expect(walkingPaceKmh("accessible")).toBe(4);
+    expect(walkingPaceKmh("normal")).toBe(5);
+    expect(walkingPaceKmh("fast")).toBe(6);
+  });
+});
 
 describe("estimateWalkingMinutes", () => {
   it("uses a normal pace of 1.4 m/s by default, rounding up", () => {

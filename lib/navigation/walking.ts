@@ -9,6 +9,11 @@ export const WALKING_SPEEDS_MPS = {
 
 export type WalkingSpeed = keyof typeof WALKING_SPEEDS_MPS;
 
+// A walking speed as whole km/h, for showing to users.
+export function walkingPaceKmh(speed: WalkingSpeed): number {
+  return Math.round(WALKING_SPEEDS_MPS[speed] * 3.6);
+}
+
 // Whole minutes to walk a distance, rounded up and at least 1 minute.
 export function estimateWalkingMinutes(
   distanceMeters: number,

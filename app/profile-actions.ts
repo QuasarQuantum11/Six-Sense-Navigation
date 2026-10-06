@@ -6,17 +6,25 @@ import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { hashPassword } from "@/lib/auth/password";
 import { verifySession } from "@/lib/auth/dal";
+import { walkingSpeedSchema } from "@/lib/auth/validation";
+import type { WalkingSpeed } from "@/lib/navigation/walking";
 
 export async function updateProfile(
   username: string,
   email: string,
-  walkingSpeed: "accessible" | "normal" | "fast",
+  walkingSpeed: WalkingSpeed,
   password?: string,
 ) {
   const session = await verifySession();
 
   if (session.role !== "student") {
     throw new Error("Only student profiles can be edited.");
+  }
+
+  // Server actions can be called directly, so don't trust the form's value.
+  const parsedWalkingSpeed = walkingSpeedSchema.safeParse(walkingSpeed);
+  if (!parsedWalkingSpeed.success) {
+    throw new Error("Choose a valid walking speed.");
   }
 
   const trimmedUsername = username.trim();
@@ -44,13 +52,13 @@ export async function updateProfile(
   const values: {
     username: string;
     email: string;
-    walkingSpeed: "accessible" | "normal" | "fast";
+    walkingSpeed: WalkingSpeed;
     updatedAt: Date;
     passwordHash?: string;
   } = {
     username: trimmedUsername,
     email: trimmedEmail,
-    walkingSpeed,
+    walkingSpeed: parsedWalkingSpeed.data,
     updatedAt: new Date(),
   };
 
