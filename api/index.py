@@ -36,7 +36,12 @@ with open(LTB_NODES_PATH) as f:
 with open(LTB_EDGES_PATH) as f:
     LTB_EDGES = json.load(f)
 
-print(f"LTB indoor graph ready: {len(LTB_NODES)} nodes, {len(LTB_EDGES)} edges")
+BUILDINGS_PATH = os.path.join(os.path.dirname(__file__), "buildings.json")
+
+with open(BUILDINGS_PATH) as f:
+    BUILDINGS = json.load(f)
+
+print(f"Building search data ready: {len(BUILDINGS)} buildings")
 
 # LTB indoor-to-outdoor entrance connections
 LTB_CONNECTORS = {
@@ -218,6 +223,61 @@ def get_graph():
                 edges.append(edge_coords)
 
         return {"edges": edges}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# Search campus buildings
+@app.get("/search/buildings")
+def search_buildings(q: str):
+    query = q.strip().lower()
+
+    if not query:
+        return []
+
+    return [
+        building
+        for building in BUILDINGS
+        if query in building["name"].lower()
+    ]
+
+@app.get("/api/building-route")
+def building_route(
+    start_lat: float,
+    start_lon: float,
+    end_lat: float,
+    end_lon: float,
+):
+    try:
+        start_node = ox.distance.nearest_nodes(
+            G, X=start_lon, Y=start_lat
+        )
+        end_node = ox.distance.nearest_nodes(
+            G, X=end_lon, Y=end_lat
+        )
+
+        route = nx.shortest_path(
+            G,
+            start_node,
+            end_node,
+            weight="length",
+        )
+
+        coordinates = [
+            [G.nodes[node]["y"], G.nodes[node]["x"]]
+            for node in route
+        ]
+
+        distance = nx.path_weight(
+            G,
+            route,
+            weight="length",
+        )
+
+        return {
+            "route": coordinates,
+            "distance_m": distance,
+        }
 
     except Exception as e:
         return {"error": str(e)}

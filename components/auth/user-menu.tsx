@@ -54,7 +54,7 @@ export function UserMenu({
           <Link
             href={
               role === "admin"
-                ? "/admins/feedback"
+                ? "/admin/feedback"
                 : `/students/${userId}/feedback`
             }
             role="menuitem"

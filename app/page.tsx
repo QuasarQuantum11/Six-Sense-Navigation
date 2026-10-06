@@ -38,7 +38,7 @@ export default async function Home() {
                 View Students
               </Link>
               <Link
-                href="/admins"
+                href="/admin"
                 className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:bg-accent-dark"
               >
                 View Admins

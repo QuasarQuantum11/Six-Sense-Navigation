@@ -45,6 +45,16 @@ export default async function StudentPage({
       buildingName: tb.building.name,
       dayOfWeek: tb.dayOfWeek,
       startTime: tb.startTime,
+      subjectCode: tb.subjectCode,
+      subjectDescription: tb.subjectDescription,
+      classGroup: tb.classGroup,
+      activity: tb.activity,
+      campus: tb.campus,
+      sourceLocation: tb.sourceLocation,
+      room: tb.room,
+      staff: tb.staff,
+      duration: tb.duration,
+      classDates: tb.classDates,
     })),
   }));
 
