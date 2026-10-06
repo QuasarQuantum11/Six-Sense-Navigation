@@ -54,6 +54,23 @@ function findPath(nodes: Node[], edges: Edge[], startId: number, destinationId: 
   return null;
 }
 
+// Real walking length of a path, from each edge's OpenStreetMap length (the
+// drawn route only joins nodes with straight lines). Uses `length`, not the
+// routing `weight`, which may be adjusted for preferences.
+function pathLengthMeters(edges: Edge[], nodeIds: number[]): number {
+  const shortestEdge = new Map<string, number>();
+  for (const edge of edges) {
+    const key = `${edge.fromNode}:${edge.toNode}`;
+    shortestEdge.set(key, Math.min(shortestEdge.get(key) ?? Infinity, edge.length));
+  }
+
+  let total = 0;
+  for (let index = 0; index < nodeIds.length - 1; index += 1) {
+    total += shortestEdge.get(`${nodeIds[index]}:${nodeIds[index + 1]}`) ?? 0;
+  }
+  return total;
+}
+
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const values = ["start_lat", "start_lon", "end_lat", "end_lon"].map((key) =>
@@ -89,7 +106,12 @@ export async function GET(request: Request) {
       return node ? ([[node.latitude, node.longitude]] as [number, number][]) : [];
     });
 
-    return Response.json({ route, startNode: start.id, destinationNode: destination.id });
+    return Response.json({
+      route,
+      distanceMeters: pathLengthMeters(edges, nodeIds),
+      startNode: start.id,
+      destinationNode: destination.id,
+    });
   } catch (error) {
     console.error("Failed to calculate navigation route:", error);
     return Response.json(

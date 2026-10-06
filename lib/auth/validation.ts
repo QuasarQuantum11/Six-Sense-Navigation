@@ -6,6 +6,10 @@ const passwordSchema = z
   .regex(/[A-Za-z]/, "Password must contain a letter")
   .regex(/[0-9]/, "Password must contain a number");
 
+export const walkingSpeedSchema = z.enum(["accessible", "normal", "fast"], {
+  error: "Choose a valid walking speed",
+});
+
 export const signupSchema = z.object({
   username: z
     .string()
@@ -18,7 +22,7 @@ export const signupSchema = z.object({
     ),
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),
   password: passwordSchema,
-  walkingSpeed: z.enum(["accessible", "normal", "fast"]),
+  walkingSpeed: walkingSpeedSchema,
 });
 
 export const adminSignupSchema = signupSchema.omit({ walkingSpeed: true }).extend({
