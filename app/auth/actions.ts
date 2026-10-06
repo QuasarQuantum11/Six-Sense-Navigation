@@ -60,8 +60,8 @@ export async function signup(
       username: student.username,
       role: "student",
     });
-  } catch (error) {
-    console.error("Sign-up failed", error);
+  } catch {
+    console.error("Sign-up failed");
     return { message: "Unable to create your account. Please try again." };
   }
 
@@ -106,8 +106,8 @@ export async function adminSignup(
       username: admin.username,
       role: "admin",
     });
-  } catch (error) {
-    console.error("Admin sign-up failed", error);
+  } catch {
+    console.error("Admin sign-up failed");
     return { message: "Unable to create your account. Please try again." };
   }
 
@@ -147,8 +147,8 @@ export async function login(
       username: account.username,
       role,
     });
-  } catch (error) {
-    console.error("Login failed", error);
+  } catch {
+    console.error("Login failed");
     return { message: "Unable to log in right now. Please try again." };
   }
 

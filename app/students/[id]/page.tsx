@@ -16,6 +16,7 @@ export default async function StudentPage({
   const session = await requireStudentOrAdmin(id);
 
   const student = await db.query.students.findFirst({
+    columns: { id: true, username: true },
     where: eq(students.id, id),
   });
 

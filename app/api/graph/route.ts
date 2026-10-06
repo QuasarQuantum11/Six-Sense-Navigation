@@ -42,8 +42,8 @@ export async function GET() {
     });
 
     return Response.json({ edges: result, nodeCount: nodes.length });
-  } catch (error) {
-    console.error("Failed to load navigation graph:", error);
+  } catch {
+    console.error("Failed to load navigation graph:");
     return Response.json(
       { error: "The navigation graph could not be loaded." },
       { status: 500 },

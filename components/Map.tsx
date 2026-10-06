@@ -6,6 +6,8 @@ import "leaflet/dist/leaflet.css";
 import BuildingSearch from "@/components/map/building-search";
 import type { BuildingLocation } from "@/lib/buildings/search";
 import Link from "next/link";
+import LocationControls from "@/components/map/location-controls";
+import { type CurrentLocation } from "@/lib/navigation/geolocation";
 import {
     estimateWalkingMinutes,
     formatDistance,
@@ -35,13 +37,12 @@ type WalkingRoute = {
 
 // Fetches a walking route between two points from the Next.js routing API.
 async function fetchWalkingRoute(start: L.LatLng, end: L.LatLng): Promise<WalkingRoute> {
-    const params = new URLSearchParams({
-        start_lat: String(start.lat),
-        start_lon: String(start.lng),
-        end_lat: String(end.lat),
-        end_lon: String(end.lng),
+    const response = await fetch("/api/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ start_lat: start.lat, start_lon: start.lng, end_lat: end.lat, end_lon: end.lng }),
     });
-    const response = await fetch(`/api/route?${params}`);
     const data = await response.json();
     if (!response.ok || !Array.isArray(data.route) || data.route.length === 0) {
         throw new Error(data.error ?? `HTTP ${response.status}`);
@@ -146,6 +147,8 @@ export default function Map({
     const [pinRouteDistance, setPinRouteDistance] = useState<number | null>(null);
     // Bumped to empty the From/To boxes when map clicks replace their pins.
     const [buildingInputsKey, setBuildingInputsKey] = useState(0);
+    const [fromLocationKey, setFromLocationKey] = useState(0);
+    const [locationStart, setLocationStart] = useState(false);
 
     // Indoor navigation state: room list, selected destination, and floor route.
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
@@ -241,6 +244,7 @@ export default function Map({
 
                 // A clicked pin replaces whatever building the boxes showed.
                 const clearBuildingInputs = () => {
+                    setLocationStart(false);
                     setFromBuilding(null);
                     setToBuilding(null);
                     setBuildingInputsKey((key) => key + 1);
@@ -301,6 +305,7 @@ export default function Map({
                 setPinRouteLoading(true);
                 try {
                     const { route, distanceMeters } = await fetchWalkingRoute(start.getLatLng(), end.getLatLng());
+                    if (mapInstance.current !== map) return;
                     drawRoute(map, routeLayerRef, route);
                     setPinRouteDistance(distanceMeters);
                 } catch (error) {
@@ -311,6 +316,14 @@ export default function Map({
                 }
             });
         }
+        return () => {
+            mapInstance.current?.remove();
+            mapInstance.current = null;
+            startMarkerRef.current = null;
+            endMarkerRef.current = null;
+            routeLayerRef.current = null;
+            ltbRouteLayerRef.current = null;
+        };
     }, []);
 
     useEffect(() => {
@@ -335,6 +348,7 @@ export default function Map({
         markerRef.current.bindTooltip(building.name);
 
         if (end === "from") {
+            setLocationStart(false);
             setFromBuilding(building);
             setStartSelected(true);
         } else {
@@ -358,6 +372,7 @@ export default function Map({
         routeLayerRef.current = null;
         setPinRouteDistance(null);
         if (end === "from") {
+            setLocationStart(false);
             setFromBuilding(null);
             setStartSelected(false);
         } else {
@@ -376,6 +391,7 @@ export default function Map({
         setPinRouteError("");
         try {
             const { route, distanceMeters } = await fetchWalkingRoute(start.getLatLng(), end.getLatLng());
+            if (mapInstance.current !== map) return;
             drawRoute(map, routeLayerRef, route);
             setPinRouteDistance(distanceMeters);
         } catch (error) {
@@ -407,6 +423,7 @@ export default function Map({
         }
 
         const start = startMarkerRef.current.getLatLng();
+        const map = mapInstance.current;
 
         setLoading(true);
         setRouteError("");
@@ -414,10 +431,14 @@ export default function Map({
         setIndoorDistance(null);
 
         try {
-            const response = await fetch(
-                `${API_URL}/api/ltb-route?start_lat=${start.lat}&start_lon=${start.lng}&end_node=${destination}`
-            );
+            const response = await fetch("/api/ltb-route", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ start_lat: start.lat, start_lon: start.lng, end_node: destination }),
+            });
             const data = await response.json();
+            if (mapInstance.current !== map) return;
             if (!response.ok || data.error) {
                 throw new Error(data.error || `HTTP ${response.status}`);
             }
@@ -479,6 +500,30 @@ export default function Map({
     const totalRouteDistance = indoorDistance?.total_estimated_distance_m ??
         (indoorDistance?.vertical_segments === 0 ? indoorDistance.total_known_distance_m : null);
 
+    const useLocationStart = (location: CurrentLocation) => {
+        const map = mapInstance.current;
+        if (!map || pinRouteLoading || loading) return;
+        const point: L.LatLngTuple = [location.latitude, location.longitude];
+        if (startMarkerRef.current) startMarkerRef.current.setLatLng(point);
+        else startMarkerRef.current = L.marker(point).addTo(map);
+        startMarkerRef.current.bindTooltip("Start: current location snapshot");
+        routeLayerRef.current?.remove();
+        routeLayerRef.current = null;
+        ltbRouteLayerRef.current?.remove();
+        ltbRouteLayerRef.current = null;
+        setFromBuilding(null);
+        setLocationStart(true);
+        setFromLocationKey((key) => key + 1);
+        setStartSelected(true);
+        setPinRouteDistance(null);
+        setPinRouteError("");
+        setIndoorRoute([]);
+        setIndoorDistance(null);
+        setEntranceNode("");
+        setRouteError("");
+        panToPoint(map, point);
+    };
+
     return (
         <div className="absolute inset-0 overflow-hidden">
             {/* Keep the campus map mounted so its route remains available on return. */}
@@ -489,15 +534,17 @@ export default function Map({
             />
 
             {view === "outdoor" && (
-                <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="Campus map controls">
+                <section className="absolute left-4 top-4 z-[1000] max-h-[65%] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl sm:max-h-[calc(100%-2rem)]" aria-label="Campus map controls">
                     <h2 className="text-xl font-semibold text-slate-900">Navigate to Building</h2>
                     <p className="mt-2 text-sm text-slate-600">
                         Choose buildings to pin as your start and end, or click the map to place pins.
                     </p>
+                    <LocationControls mapRef={mapInstance} onUse={useLocationStart} busy={pinRouteLoading || loading} />
+                    {locationStart && <p className="mt-2 text-sm text-blue-900">Start: your location when selected. Moving does not change this start.</p>}
 
                     <div className="mt-4 space-y-4">
                         <BuildingSearch
-                            key={`from-${buildingInputsKey}`}
+                            key={`from-${buildingInputsKey}-${fromLocationKey}`}
                             label="From"
                             placeholder="Search departure building..."
                             buildings={buildings}
@@ -518,7 +565,7 @@ export default function Map({
                         <button
                             type="button"
                             onClick={buildPinRoute}
-                            disabled={!fromBuilding || !toBuilding || pinRouteLoading}
+                            disabled={(!fromBuilding && !locationStart) || !toBuilding || pinRouteLoading}
                             className="w-full rounded-md bg-blue-700 px-4 py-2.5 font-medium text-white enabled:hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {pinRouteLoading ? "Finding route..." : "Build route"}

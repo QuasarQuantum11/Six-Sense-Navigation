@@ -85,6 +85,56 @@ excludes those segments. The routing penalty for extra floor changes is not
 reported as a physical distance. Replace these assumptions with measured
 connector lengths if a tighter accuracy requirement is introduced.
 
+## Current location and privacy (original RTM R12)
+
+On `/map`, guests and students can click **Enable location**, grant browser
+permission and see a live position dot and accuracy circle. **Use current
+location as start** copies a fresh position into the planner; choose a building
+or LTB room and calculate a route. The chosen start is a snapshot: movement
+does not automatically recalculate routes. Positions outside the Clayton map
+area cannot be used as a start. Browser location does not determine an indoor
+room or floor.
+
+**Stop location**, leaving the map, hiding the page, a denied permission or a
+location error ends the watch and removes the live position. Restart manually
+when returning. Location updates are kept in memory only; no location history
+table or browser storage is used. A selected start remains until replaced or
+the map is closed. `/privacy` explains stored data, administrator access,
+third-party map tiles and retention limitations.
+
+The frontend uses same-origin POST requests for outdoor and LTB routing, with
+coordinates in JSON bodies and `Cache-Control: private, no-store` responses.
+The LTB proxy forwards a validated body to the Python service over HTTPS in
+production (HTTP is permitted only for localhost development). Deploy the
+Python POST `/api/ltb-route` handler before deploying this frontend. Set
+`API_BASE_URL` on the Next.js server to override the routing service;
+`NEXT_PUBLIC_API_BASE_URL` remains the fallback and indoor-node source.
+Legacy GET route endpoints remain for compatibility; do not send personal
+coordinates to them, as query strings can appear in hosting access logs.
+
+Feedback pages and mutations require the student's own session or an
+authorised administrator. Existing timetable ownership checks remain in force.
+Student/admin display queries select only required fields, excluding password
+hashes. Authentication/database failures do not log raw errors containing user
+data. Production uses secure HttpOnly cookies, HSTS and same-origin location
+permissions. Configure HTTPS on both deployments and a TLS database connection
+(for Neon, use the provider's TLS connection string with `sslmode=verify-full`). Hosting-level encryption
+at rest and operational log retention must be checked in the deployment
+settings; application changes do not establish those guarantees. Timetable
+field encryption and self-service account deletion are outside this change.
+
+Manual acceptance checks:
+
+- Guest and student: enable location, verify dot/accuracy, update position,
+  choose it as a start, then calculate outdoor and LTB routes.
+- Stop/restart, permission denied, unavailable location, timeout and hiding or
+  leaving the map: verify updates stop, errors explain manual map selection,
+  and no location history or automatic route request is created.
+- Guest and a different student cannot open another student's new-feedback
+  page or submit feedback under their ID; the owner and admin retain access.
+- Inspect network requests: route coordinates are in POST bodies; both route
+  responses and error responses include `private, no-store`.
+
 ## Verification
 
 ```bash

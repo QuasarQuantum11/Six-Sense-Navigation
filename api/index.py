@@ -3,11 +3,20 @@ import json
 import uvicorn 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 import osmnx as ox
 import networkx as nx
 from api.indoor_distance import measure_indoor_path, routing_weight_pixels
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def private_route_responses(request, call_next):
+    response = await call_next(request)
+    if request.url.path in {"/api/route", "/api/ltb-route", "/api/indoor-route", "/api/building-route"}:
+        response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,8 +88,8 @@ def get_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float
         path = nx.shortest_path(G, orig_node, dest_node, weight='length')
         route_coords = [(G.nodes[node]['y'], G.nodes[node]['x']) for node in path]
         return {"route": route_coords}
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        return {"error": "The requested navigation data could not be calculated."}
 
 # Basic indoor LTB routing
 @app.get("/api/indoor-nodes")
@@ -111,10 +120,21 @@ def get_indoor_route(start_node: str, end_node: str):
 
         return {"route": route, **measure_indoor_path(LTB_G, path)}
 
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        return {"error": "The requested navigation data could not be calculated."}
 
 # Combined outdoor + indoor LTB routing
+class LTBRouteRequest(BaseModel):
+    start_lat: float = Field(ge=-90, le=90, allow_inf_nan=False)
+    start_lon: float = Field(ge=-180, le=180, allow_inf_nan=False)
+    end_node: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_]+$")
+
+
+@app.post("/api/ltb-route")
+def post_ltb_route(request: LTBRouteRequest):
+    return get_ltb_route(request.start_lat, request.start_lon, request.end_node)
+
+
 @app.get("/api/ltb-route")
 def get_ltb_route(start_lat: float, start_lon: float, end_node: str):
     try:
@@ -182,8 +202,8 @@ def get_ltb_route(start_lat: float, start_lon: float, end_node: str):
 
         return best_result
 
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        return {"error": "The requested navigation data could not be calculated."}
 
 
 # Return the navigation graph for map overlay
@@ -224,8 +244,8 @@ def get_graph():
 
         return {"edges": edges}
 
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        return {"error": "The requested navigation data could not be calculated."}
 
 # Search campus buildings
 @app.get("/search/buildings")
@@ -279,8 +299,8 @@ def building_route(
             "distance_m": distance,
         }
 
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception:
+        return {"error": "The requested navigation data could not be calculated."}
 
 # Local runner (For local testing)
 if __name__ == "__main__":
