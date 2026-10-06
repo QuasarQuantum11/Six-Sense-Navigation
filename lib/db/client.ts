@@ -35,8 +35,8 @@ export async function checkDbConnection(): Promise<string> {
   try {
     await pool.query("SELECT version()");
     return "Database connected";
-  } catch (error) {
-    console.error("Error connecting to the database:", error);
+  } catch {
+    console.error("Error connecting to the database:");
     return "Database not connected";
   }
 }

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
   await requireAdmin();
-  const allStudents = await db.select().from(students).orderBy(students.createdAt);
+  const allStudents = await db.select({ id: students.id, username: students.username, profilePicture: students.profilePicture, walkingSpeed: students.walkingSpeed, createdAt: students.createdAt }).from(students).orderBy(students.createdAt);
 
   return (
     <div className="flex flex-1 flex-col items-center bg-white">

@@ -12,6 +12,7 @@ export default async function ProfilePage() {
   }
 
   const student = await db.query.students.findFirst({
+    columns: { id: true, username: true, email: true, walkingSpeed: true, createdAt: true, emailVerified: true },
     where: eq(students.id, session.userId),
   });
 

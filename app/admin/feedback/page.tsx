@@ -18,7 +18,7 @@ export default async function AllFeedbackPage() {
 
   const allFeedback = await db.query.feedback.findMany({
     orderBy: desc(feedback.createdAt),
-    with: { student: true },
+    with: { student: { columns: { username: true } } },
   });
 
   return (

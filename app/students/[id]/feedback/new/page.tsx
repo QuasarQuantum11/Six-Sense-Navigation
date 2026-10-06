@@ -4,6 +4,7 @@ import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { submitFeedback } from "./actions";
 import { BackLink } from "@/components/back-link";
+import { requireStudentOrAdmin } from "@/lib/auth/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,10 @@ export default async function NewFeedbackPage({
   params,
 }: PageProps<"/students/[id]/feedback/new">) {
   const { id } = await params;
+  await requireStudentOrAdmin(id);
 
   const student = await db.query.students.findFirst({
+    columns: { id: true, username: true },
     where: eq(students.id, id),
   });
 

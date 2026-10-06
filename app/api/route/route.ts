@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/client";
 import { navigationEdges, navigationNodes } from "@/lib/navigation/schema";
+import { routeInputSchema, privateRouteHeaders } from "@/lib/navigation/route-input";
 
 type Node = typeof navigationNodes.$inferSelect;
 type Edge = typeof navigationEdges.$inferSelect;
@@ -73,14 +74,27 @@ function pathLengthMeters(edges: Edge[], nodeIds: number[]): number {
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const values = ["start_lat", "start_lon", "end_lat", "end_lon"].map((key) =>
-    Number(params.get(key)),
-  );
+  const input = Object.fromEntries(["start_lat", "start_lon", "end_lat", "end_lon"].map((key) => {
+    const value = params.get(key);
+    return [key, value?.trim() ? Number(value) : undefined];
+  }));
+  return calculateRoute(input);
+}
 
-  if (values.some((value) => !Number.isFinite(value))) {
+export async function POST(request: Request) {
+  try {
+    return await calculateRoute(await request.json());
+  } catch {
+    return Response.json({ error: "A JSON route request is required." }, { status: 400, headers: privateRouteHeaders });
+  }
+}
+
+async function calculateRoute(input: unknown) {
+  const parsed = routeInputSchema.safeParse(input);
+  if (!parsed.success) {
     return Response.json(
-      { error: "start_lat, start_lon, end_lat, and end_lon are required numbers." },
-      { status: 400 },
+      { error: "Valid start_lat, start_lon, end_lat, and end_lon coordinates are required." },
+      { status: 400, headers: privateRouteHeaders },
     );
   }
 
@@ -89,16 +103,16 @@ export async function GET(request: Request) {
       db.select().from(navigationNodes),
       db.select().from(navigationEdges),
     ]);
-    const [startLatitude, startLongitude, endLatitude, endLongitude] = values;
+    const { start_lat: startLatitude, start_lon: startLongitude, end_lat: endLatitude, end_lon: endLongitude } = parsed.data;
     const start = nearestNode(nodes, startLatitude, startLongitude);
     const destination = nearestNode(nodes, endLatitude, endLongitude);
 
     if (!start || !destination) {
-      return Response.json({ error: "The navigation graph is empty." }, { status: 503 });
+      return Response.json({ error: "The navigation graph is empty." }, { status: 503, headers: privateRouteHeaders });
     }
 
     const nodeIds = findPath(nodes, edges, start.id, destination.id);
-    if (!nodeIds) return Response.json({ error: "No route was found." }, { status: 404 });
+    if (!nodeIds) return Response.json({ error: "No route was found." }, { status: 404, headers: privateRouteHeaders });
 
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
     const route = nodeIds.flatMap((nodeId) => {
@@ -111,12 +125,12 @@ export async function GET(request: Request) {
       distanceMeters: pathLengthMeters(edges, nodeIds),
       startNode: start.id,
       destinationNode: destination.id,
-    });
-  } catch (error) {
-    console.error("Failed to calculate navigation route:", error);
+    }, { headers: privateRouteHeaders });
+  } catch {
+    console.error("Failed to calculate navigation route.");
     return Response.json(
       { error: "The navigation route could not be calculated." },
-      { status: 500 },
+      { status: 500, headers: privateRouteHeaders },
     );
   }
 }

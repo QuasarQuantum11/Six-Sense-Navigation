@@ -1,5 +1,9 @@
 import "dotenv/config";
 import { Pool } from "pg";
+import { readFileSync } from "node:fs";
+
+const ltbEntrances = JSON.parse(readFileSync(new URL("../api/ltb_entrances.json", import.meta.url), "utf8"));
+const ltbSearchEntrance = ltbEntrances.entrances.find((entry) => entry.id === ltbEntrances.building_search_entrance);
 
 // Fill in each building's location as decimal degrees. A quick way is to
 // right-click the building's main entrance in Google Maps, which copies
@@ -9,7 +13,7 @@ import { Pool } from "pg";
 // coordinates (e.g. corrected by an admin on /admins/buildings) keeps them.
 // To change an existing location, edit it on that page instead.
 const buildingLocations = [
-  { name: "Learning and Teaching Building", latitude: -37.91329573181047, longitude: 145.13278055602936 },
+  { name: "Learning and Teaching Building", latitude: ltbSearchEntrance.latitude, longitude: ltbSearchEntrance.longitude },
   { name: "Science Building", latitude: null, longitude: null },
   { name: "Engineering Block", latitude: null, longitude: null },
   { name: "Library", latitude: null, longitude: null },
