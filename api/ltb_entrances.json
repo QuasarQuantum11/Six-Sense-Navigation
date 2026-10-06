@@ -1,0 +1,25 @@
+{
+  "source": "https://www.openstreetmap.org/way/831605789",
+  "mapping_verified": false,
+  "building_search_entrance": "east",
+  "entrances": [
+    {
+      "id": "west",
+      "label": "West candidate entrance",
+      "indoor_node": "G_N01",
+      "outdoor_node": 7764050705,
+      "latitude": -37.9136649,
+      "longitude": 145.1324424
+    },
+    {
+      "id": "east",
+      "label": "East candidate entrance",
+      "indoor_node": "G_N02",
+      "outdoor_node": 6801226848,
+      "latitude": -37.913906,
+      "longitude": 145.1328033
+    }
+  ],
+  "disabled_indoor_nodes": ["G_N03"],
+  "verification_note": "Outdoor nodes lie on the OSM LTB footprint and connect to walking paths. Pairings with indoor floor-plan nodes are provisional and require entrance records or on-site confirmation."
+}

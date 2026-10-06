@@ -52,12 +52,19 @@ with open(BUILDINGS_PATH) as f:
 
 print(f"Building search data ready: {len(BUILDINGS)} buildings")
 
-# LTB indoor-to-outdoor entrance connections
-LTB_CONNECTORS = {
-    "G_N01": 611527813,  # Bus Loop Entrance
-    "G_N02": 588089887,  # South Car Park Entrance
-    "G_N03": 611527849,  # LTB Lawn Entrance
-}
+# Candidate entrances on the actual LTB footprint, not distant campus junctions.
+# The indoor/outdoor pairings remain provisional until verified on site.
+with open(os.path.join(os.path.dirname(__file__), "ltb_entrances.json")) as f:
+    LTB_ENTRANCE_CONFIG = json.load(f)
+LTB_ENTRANCES = {entry["indoor_node"]: entry for entry in LTB_ENTRANCE_CONFIG["entrances"]}
+LTB_CONNECTORS = {indoor: entry["outdoor_node"] for indoor, entry in LTB_ENTRANCES.items()}
+for indoor, entry in LTB_ENTRANCES.items():
+    outdoor = G.nodes[entry["outdoor_node"]]
+    if abs(outdoor["y"] - entry["latitude"]) > 1e-7 or abs(outdoor["x"] - entry["longitude"]) > 1e-7:
+        raise ValueError(f"LTB entrance {indoor} does not match its outdoor graph coordinates")
+    LTB_NODES[indoor]["description"] = entry["label"]
+for indoor in LTB_ENTRANCE_CONFIG["disabled_indoor_nodes"]:
+    LTB_NODES[indoor]["description"] = "Unverified entrance (outdoor connection disabled)"
 
 # Build LTB indoor routing graph
 LTB_G = nx.Graph()
@@ -153,6 +160,8 @@ def get_ltb_route(start_lat: float, start_lon: float, end_node: str):
 
             result = {
                 "entrance_node": indoor_entrance,
+                "entrance_label": LTB_ENTRANCES[indoor_entrance]["label"],
+                "entrance_mapping_verified": LTB_ENTRANCE_CONFIG["mapping_verified"],
                 "outdoor_node": outdoor_node,
                 "outdoor_path": [(G.nodes[node]["y"], G.nodes[node]["x"]) for node in outdoor_path],
                 "indoor_path": [

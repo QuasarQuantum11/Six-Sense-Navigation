@@ -137,6 +137,29 @@ Manual acceptance checks:
 
 ## Verification
 
+### LTB map connections
+
+`api/ltb_entrances.json` records two candidate doors on OSM building 92's
+footprint: west outdoor node `7764050705` and east node `6801226848`.
+Their provisional floor-plan pairings are `G_N01` and `G_N02`. `G_N03`
+has no enabled outdoor connection. The old connectors were campus junctions
+over 300 m east of LTB. Candidate pairings must be confirmed against entrance
+records or on site before being presented as verified physical transitions.
+The API reports `entrance_mapping_verified: false`; both route views display
+the pending-confirmation notice. The building-search pin uses the east
+candidate coordinate, not the building centre.
+
+The seed script fills missing coordinates only. Existing databases need the
+targeted correction below; the script refuses to overwrite independently
+edited coordinates and changes no timetable or account records:
+
+```bash
+node scripts/fix-ltb-location.mjs          # preview the one-record correction
+node scripts/fix-ltb-location.mjs --apply  # apply to the configured database
+```
+
+### Checks
+
 ```bash
 npm test
 npm run lint

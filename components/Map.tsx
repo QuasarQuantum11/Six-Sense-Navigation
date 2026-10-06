@@ -160,6 +160,7 @@ export default function Map({
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<"outdoor" | "indoor">("outdoor");
     const [entranceNode, setEntranceNode] = useState("");
+    const [entranceWarning, setEntranceWarning] = useState("");
     const [routeError, setRouteError] = useState("");
     const [nodesError, setNodesError] = useState("");
 
@@ -473,6 +474,9 @@ export default function Map({
             setIndoorRoute(data.indoor_path);
             setSelectedFloor(data.indoor_path[0]?.floor || "G");
             setEntranceNode(data.entrance_node || "");
+            setEntranceWarning(data.entrance_mapping_verified === false
+                ? `${data.entrance_label ?? "Candidate entrance"}: the indoor/outdoor pairing still needs confirmation. This is a provisional route.`
+                : "");
             if (
                 typeof data.outdoor_distance_m === "number" &&
                 typeof data.indoor_horizontal_distance_m === "number" &&
@@ -599,6 +603,7 @@ export default function Map({
                     </div>
 
                     <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2>
+                    <p className="mt-2 text-xs text-amber-800">LTB uses two candidate entrances. Their floor-plan connections need confirmation. The LTB building-search pin represents the east candidate entrance.</p>
                     <p className="mt-2 text-sm text-slate-600">
                         Choose a room, click the campus map once for your starting point, then calculate the route.
                         With a room selected, another map click moves the starting point.
@@ -647,6 +652,7 @@ export default function Map({
                     {indoorRoute.length > 0 && (
                         <div className="mt-5 border-t border-slate-200 pt-4" aria-live="polite">
                             <h3 className="font-semibold text-slate-900">Route calculated</h3>
+                            {entranceWarning && <p className="mt-2 text-sm text-amber-800" role="note">{entranceWarning}</p>}
                             {entranceNode && <p className="mt-1 text-sm text-slate-600">Outdoor route to LTB entrance {entranceNode}.</p>}
                             {indoorDistance && (
                                 <>
@@ -727,6 +733,7 @@ export default function Map({
                         ) : <span>Distance details are unavailable from the API.</span>}
                     </div>
 
+                    {entranceWarning && <p className="bg-amber-50 px-4 py-2 text-sm text-amber-900" role="note">{entranceWarning}</p>}
                     <nav className="flex flex-wrap items-center gap-2 bg-white px-4 py-2" aria-label="LTB route floors">
                         <span className="mr-1 text-sm text-slate-600">Route floors:</span>
                         {floorsInRoute.map((floor) => (
