@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import BuildingSearch from "@/components/map/building-search";
+import type { BuildingLocation } from "@/lib/buildings/search";
 
 // Indoor navigation data returned by the LTB backend.
 type IndoorNode = {
@@ -56,8 +58,12 @@ export default function Map() {
     const endMarkerRef = useRef<L.Marker | null>(null);
     const routeLayerRef = useRef<L.Polyline | null>(null);
     const ltbRouteLayerRef = useRef<L.Polyline | null>(null);
+    const searchMarkerRef = useRef<L.CircleMarker | null>(null);
     const destinationRef = useRef("");
 
+    // Building search: located campus buildings from the database.
+    const [buildings, setBuildings] = useState<BuildingLocation[]>([]);
+    const [buildingsError, setBuildingsError] = useState("");
     const selectedDepartureRef = useRef<{
     id: string;
     name: string;
@@ -199,6 +205,21 @@ const selectedDestinationRef = useRef<{
                     );
                 });
 
+            // OUTDOOR MAP: load buildings for the building search.
+            fetch("/api/buildings")
+                .then((response) => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then((data) => {
+                    setBuildings(data.buildings);
+                    setBuildingsError("");
+                })
+                .catch((error) => {
+                    setBuildingsError("Could not load buildings for search.");
+                    console.warn("Failed to load buildings:", error);
+                });
+
             // INDOOR MAP: load LTB rooms and indoor graph nodes.
             fetch(`${API_URL}/api/indoor-nodes`)
                 .then((response) => {
@@ -293,9 +314,14 @@ const selectedDestinationRef = useRef<{
                         ltbRouteLayerRef.current = null;
                     }
 
+                    // Only route between the searched buildings once both are chosen.
+                    const departure = selectedDepartureRef.current;
+                    const buildingDestination = selectedDestinationRef.current;
+                    if (!departure || !buildingDestination) return;
+
                     try {
                         const response = await fetch(
-                            `${API_URL}/api/building-route?start_lat=${selectedDepartureRef.current.latitude}&start_lon=${selectedDepartureRef.current.longitude}&end_lat=${selectedDestinationRef.current.latitude}&end_lon=${selectedDestinationRef.current.longitude}`
+                            `${API_URL}/api/building-route?start_lat=${departure.latitude}&start_lon=${departure.longitude}&end_lat=${buildingDestination.latitude}&end_lon=${buildingDestination.longitude}`
                         );
 
                         if (!response.ok) {
@@ -400,6 +426,37 @@ const selectedDestinationRef = useRef<{
         }
     }, [view]);
 
+    // OUTDOOR MAP: mark a searched building and pan the map to it.
+    const showBuilding = (building: BuildingLocation) => {
+        const map = mapInstance.current;
+        if (!map) return;
+
+        const position: L.LatLngExpression = [building.latitude, building.longitude];
+        if (searchMarkerRef.current) {
+            map.removeLayer(searchMarkerRef.current);
+        }
+        // A circle keeps it distinct from the route start/end pins. Stop clicks
+        // on it bubbling to the map, where they would set a route point.
+        searchMarkerRef.current = L.circleMarker(position, {
+            radius: 10,
+            color: "#c2410c",
+            weight: 3,
+            fillColor: "#f97316",
+            fillOpacity: 0.9,
+            bubblingMouseEvents: false,
+        })
+            .bindPopup(building.name)
+            .addTo(map)
+            .openPopup();
+
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduceMotion) {
+            map.setView(position, 18);
+        } else {
+            map.flyTo(position, 18, { duration: 1 });
+        }
+    };
+
     // INDOOR MAP: prepare selectable LTB rooms and floors in the route.
     const roomNodes = Object.entries(indoorNodes)
         .filter(
@@ -502,7 +559,16 @@ const selectedDestinationRef = useRef<{
             />
 
             {view === "outdoor" && (
+                // <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="Campus map controls">
+                //     <BuildingSearch buildings={buildings} error={buildingsError} onSelect={showBuilding} />
+
+                //     <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2>
+                    
                 <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
+                    <BuildingSearch buildings={buildings} error={buildingsError} onSelect={showBuilding} />
+
+                    {/* <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2> */}
+
                     <h2 className="text-xl font-semibold text-slate-900">Navigate to Building</h2>
 
                     <div className="mt-4 space-y-4">

@@ -1,5 +1,5 @@
 {
-  "id": "a9d55b38-553c-4cf7-b9a1-b879b340e4a0",
+  "id": "4a96fe63-d792-4a8b-ac1a-4848ee032c84",
   "prevId": "8f12db1a-c94c-48f5-9453-3cc42ff3c2b9",
   "version": "7",
   "dialect": "postgresql",
@@ -385,6 +385,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "latitude": {
+          "name": "latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -448,66 +460,6 @@
         "start_time": {
           "name": "start_time",
           "type": "time",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subject_code": {
-          "name": "subject_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subject_description": {
-          "name": "subject_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "class_group": {
-          "name": "class_group",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "activity": {
-          "name": "activity",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "campus": {
-          "name": "campus",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_location": {
-          "name": "source_location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "room": {
-          "name": "room",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "staff": {
-          "name": "staff",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duration": {
-          "name": "duration",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "class_dates": {
-          "name": "class_dates",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         }
