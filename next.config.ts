@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
     return [{
       source: "/:path*",
       headers: [
-        { key: "Referrer-Policy", value: "no-referrer" },
+        // OSM tiles require a Referer; cross-origin requests expose only our origin.
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "DENY" },
         { key: "Permissions-Policy", value: "geolocation=(self), camera=(), microphone=()" },
