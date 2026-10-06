@@ -5,6 +5,12 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import BuildingSearch from "@/components/map/building-search";
 import type { BuildingLocation } from "@/lib/buildings/search";
+import {
+    estimateWalkingMinutes,
+    formatDistance,
+    formatWalkingTime,
+    WALKING_SPEEDS_MPS,
+} from "@/lib/navigation/walking";
 
 // Leaflet looks for its default pin images at a path that doesn't exist once
 // bundled, so point every marker at copies in public/leaflet/.
@@ -19,8 +25,14 @@ L.Marker.prototype.options.icon = L.icon({
     shadowSize: [41, 41],
 });
 
+type WalkingRoute = {
+    route: L.LatLngTuple[];
+    // Missing if the API couldn't measure the route.
+    distanceMeters: number | null;
+};
+
 // Fetches a walking route between two points from the Next.js routing API.
-async function fetchWalkingRoute(start: L.LatLng, end: L.LatLng): Promise<L.LatLngTuple[]> {
+async function fetchWalkingRoute(start: L.LatLng, end: L.LatLng): Promise<WalkingRoute> {
     const params = new URLSearchParams({
         start_lat: String(start.lat),
         start_lon: String(start.lng),
@@ -32,7 +44,10 @@ async function fetchWalkingRoute(start: L.LatLng, end: L.LatLng): Promise<L.LatL
     if (!response.ok || !Array.isArray(data.route) || data.route.length === 0) {
         throw new Error(data.error ?? `HTTP ${response.status}`);
     }
-    return data.route;
+    return {
+        route: data.route,
+        distanceMeters: typeof data.distanceMeters === "number" ? data.distanceMeters : null,
+    };
 }
 
 // Replaces any route already drawn with a new one and fits the map to it.
@@ -117,6 +132,8 @@ export default function Map() {
     const [toBuilding, setToBuilding] = useState<BuildingLocation | null>(null);
     const [pinRouteLoading, setPinRouteLoading] = useState(false);
     const [pinRouteError, setPinRouteError] = useState("");
+    // Walking distance of the route drawn between the pins, if any.
+    const [pinRouteDistance, setPinRouteDistance] = useState<number | null>(null);
     // Bumped to empty the From/To boxes when map clicks replace their pins.
     const [buildingInputsKey, setBuildingInputsKey] = useState(0);
 
@@ -208,6 +225,9 @@ export default function Map() {
             map.on("click", async (e) => {
                 setRouteError("");
                 setPinRouteError("");
+                // Every click either removes the drawn route or happens when
+                // there is none, so its walking summary goes too.
+                setPinRouteDistance(null);
 
                 // A clicked pin replaces whatever building the boxes showed.
                 const clearBuildingInputs = () => {
@@ -270,8 +290,9 @@ export default function Map() {
 
                 setPinRouteLoading(true);
                 try {
-                    const route = await fetchWalkingRoute(start.getLatLng(), end.getLatLng());
+                    const { route, distanceMeters } = await fetchWalkingRoute(start.getLatLng(), end.getLatLng());
                     drawRoute(map, routeLayerRef, route);
+                    setPinRouteDistance(distanceMeters);
                 } catch (error) {
                     setPinRouteError("Could not calculate a walking route between the pins.");
                     console.warn("Failed to calculate outdoor route:", error);
@@ -313,6 +334,7 @@ export default function Map() {
         // A moved pin makes any drawn route out of date.
         routeLayerRef.current?.remove();
         routeLayerRef.current = null;
+        setPinRouteDistance(null);
         setPinRouteError("");
         panToPoint(map, position);
     };
@@ -324,6 +346,7 @@ export default function Map() {
         markerRef.current = null;
         routeLayerRef.current?.remove();
         routeLayerRef.current = null;
+        setPinRouteDistance(null);
         if (end === "from") {
             setFromBuilding(null);
             setStartSelected(false);
@@ -342,8 +365,9 @@ export default function Map() {
         setPinRouteLoading(true);
         setPinRouteError("");
         try {
-            const route = await fetchWalkingRoute(start.getLatLng(), end.getLatLng());
+            const { route, distanceMeters } = await fetchWalkingRoute(start.getLatLng(), end.getLatLng());
             drawRoute(map, routeLayerRef, route);
+            setPinRouteDistance(distanceMeters);
         } catch (error) {
             setPinRouteError("Could not calculate a walking route between these buildings.");
             console.warn("Failed to calculate building route:", error);
@@ -394,6 +418,7 @@ export default function Map() {
             if (routeLayerRef.current) {
                 mapInstance.current.removeLayer(routeLayerRef.current);
                 routeLayerRef.current = null;
+                setPinRouteDistance(null);
             }
             if (ltbRouteLayerRef.current) {
                 mapInstance.current.removeLayer(ltbRouteLayerRef.current);
@@ -489,6 +514,22 @@ export default function Map() {
                             {pinRouteLoading ? "Finding route..." : "Build route"}
                         </button>
                         {pinRouteError && <p className="text-sm text-red-700" role="alert">{pinRouteError}</p>}
+
+                        {/* Kept mounted so screen readers announce each new estimate. */}
+                        <div aria-live="polite">
+                            {pinRouteDistance !== null && (
+                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                                    <p className="text-sm font-medium text-blue-900">Estimated walking time</p>
+                                    <p className="text-3xl font-bold text-blue-950">
+                                        {formatWalkingTime(estimateWalkingMinutes(pinRouteDistance))}
+                                    </p>
+                                    <p className="text-sm text-blue-900">{formatDistance(pinRouteDistance)} walk</p>
+                                    <p className="mt-1 text-xs text-blue-900">
+                                        At a normal walking pace of about {Math.round(WALKING_SPEEDS_MPS.normal * 3.6)} km/h.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2>
