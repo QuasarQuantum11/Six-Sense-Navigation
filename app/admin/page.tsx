@@ -95,7 +95,7 @@ export default async function AdminDashboardPage() {
         </section>
 
         <div className="grid gap-4 lg:grid-cols-5">
-          <section className={`${cardClass} lg:col-span-3`}>
+          <section className={`${cardClass} flex flex-col lg:col-span-3`}>
             <h2 className="text-lg font-bold text-primary-dark">Student activity</h2>
             <p className="mb-4 text-sm text-muted">
               New student accounts per day over the last {SIGNUP_CHART_DAYS} days.
