@@ -14,7 +14,7 @@ function localDateTime() {
   return { date: `${value("year")}-${value("month")}-${value("day")}`, time: `${value("hour")}:${value("minute")}` };
 }
 
-export default function CrowdControls({ mapRef, canView }: { mapRef: RefObject<L.Map | null>; canView: boolean }) {
+export default function CrowdControls({ mapRef, canView, onSourceChange }: { mapRef: RefObject<L.Map | null>; canView: boolean; onSourceChange?: (source: CrowdMode | null) => void }) {
   const sourceId = useId();
   const [enabled, setEnabled] = useState(false);
   const [mode, setMode] = useState<CrowdMode>("real");
@@ -25,6 +25,11 @@ export default function CrowdControls({ mapRef, canView }: { mapRef: RefObject<L
   const [result, setResult] = useState<CrowdResponse | null>(null);
   const [error, setError] = useState("");
   const clear = () => { setResult(null); setError(""); };
+
+  useEffect(() => {
+    onSourceChange?.(enabled && canView ? mode : null);
+    return () => onSourceChange?.(null);
+  }, [enabled, canView, mode, onSourceChange]);
 
   useEffect(() => {
     if (!enabled || !canView) return;
@@ -54,7 +59,7 @@ export default function CrowdControls({ mapRef, canView }: { mapRef: RefObject<L
   }, [enabled, result, mapRef]);
 
   return (
-    <section className="mt-4 space-y-3 rounded-lg border border-slate-200 p-3" aria-label="Estimated crowd controls">
+    <section className="space-y-3" aria-label="Estimated crowd controls">
       <h3 className="font-semibold text-slate-900">Estimated crowd activity</h3>
       <p className="text-xs text-slate-600">Timetable-based estimates around outdoor buildings. These are not live counts. Routes stay unchanged.</p>
       {!canView ? <Link href="/login" className="text-sm text-blue-800 underline">Sign in to view estimates</Link> : <>
@@ -83,22 +88,27 @@ export default function CrowdControls({ mapRef, canView }: { mapRef: RefObject<L
             {!result && !error && <p className="text-sm text-slate-600">Loading estimates…</p>}
             {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
             {result && <>
-              <p className="text-xs text-slate-700">{result.sourceLabel}<br />Estimate for {new Intl.DateTimeFormat("en-AU", { timeZone: result.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(result.at))}<br />Last requested: {new Intl.DateTimeFormat("en-AU", { timeZone: result.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(result.generatedAt))}</p>
-              {result.notices.filter(notice => !notice.startsWith("SIMULATED DATA:")).map(notice => <p key={notice} className="text-xs text-slate-600">{notice}</p>)}
+              <p className="text-xs text-slate-700">Estimate for {new Intl.DateTimeFormat("en-AU", { timeZone: result.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(result.at))}</p>
+              {result.notices.filter(notice => !notice.startsWith("SIMULATED DATA:") && !notice.startsWith("This models sample activity")).map(notice => <p key={notice} className="text-xs text-slate-600">{notice}</p>)}
               <ul className="space-y-2" aria-label="Building crowd estimates">
                 {result.buildings.map(building => <li key={building.id}>
                   <button type="button" onClick={() => {
                     const map = mapRef.current;
                     if (!map) return;
                     map.setView([building.latitude, building.longitude], 17, { animate: false });
-                    if (window.innerWidth >= 640) map.panBy([-180, 0], { animate: false });
-                    else map.panBy([0, -map.getSize().y * 0.25], { animate: false });
+                    if (window.innerWidth < 1024) map.panBy([0, -map.getSize().y * 0.25], { animate: false });
                   }} className="flex w-full items-start gap-2 rounded border border-slate-200 p-2 text-left text-xs text-slate-800">
                     <span aria-hidden="true" className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colors[building.level] }} />
                     <span>{building.name}<br /><strong>{labels[building.level]}</strong></span>
                   </button>
                 </li>)}
               </ul>
+              <details className="text-xs text-slate-600">
+                <summary className="cursor-pointer font-medium">How to read these estimates</summary>
+                <p className="mt-2">{result.sourceLabel}. Grades and display circles are provisional; circles do not represent measured crowd boundaries.</p>
+                {result.notices.filter(notice => notice.startsWith("This models sample activity")).map(notice => <p key={notice} className="mt-2">{notice}</p>)}
+                <p className="mt-2">Last requested: {new Intl.DateTimeFormat("en-AU", { timeZone: result.timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(result.generatedAt))}</p>
+              </details>
               {result.buildings.length === 0 && <p className="text-sm text-slate-600">No located campus buildings are available.</p>}
             </>}
           </div>

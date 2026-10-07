@@ -80,8 +80,7 @@ export default function LocationControls({ mapRef, onUse, busy }: {
   }
 
   return (
-    <div className="mt-4 space-y-2 rounded-lg border border-slate-200 p-3">
-      <h3 className="font-semibold text-slate-900">Your location</h3>
+    <div className="mt-3 space-y-2">
       <p className="text-xs text-slate-600">Optional. Updates stay in this map until you choose a route start. We do not save location history. Stops when you leave or hide this page.</p>
       <button type="button" onClick={tracking ? stop : start} className="w-full rounded-md border border-blue-700 px-3 py-2 text-sm font-medium text-blue-800">
         {tracking ? "Stop location" : "Enable location"}
