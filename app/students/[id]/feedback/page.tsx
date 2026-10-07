@@ -4,24 +4,21 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { feedback } from "@/lib/feedback/schema";
+import { expireStaleFeedback } from "@/lib/feedback/expire";
+import { feedbackStatusLabels } from "@/lib/feedback/status";
 import { requireStudentOrAdmin } from "@/lib/auth/dal";
 import { FeedbackRowActions } from "@/components/feedback/feedback-row-actions";
 import { BackLink } from "@/components/back-link";
 
 export const dynamic = "force-dynamic";
 
-const statusLabels: Record<string, string> = {
-  new: "New",
-  in_review: "In review",
-  resolved: "Resolved",
-  dismissed: "Dismissed",
-};
 
 export default async function StudentFeedbackPage({
   params,
 }: PageProps<"/students/[id]/feedback">) {
   const { id } = await params;
   await requireStudentOrAdmin(id);
+  await expireStaleFeedback();
 
   const student = await db.query.students.findFirst({
     columns: { id: true, username: true },
@@ -79,7 +76,7 @@ export default async function StudentFeedbackPage({
                     {item.message}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {statusLabels[item.status] ?? item.status}
+                    {feedbackStatusLabels[item.status]}
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {new Date(item.createdAt).toLocaleString()}
