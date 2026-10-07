@@ -7,6 +7,7 @@ import BuildingSearch from "@/components/map/building-search";
 import type { BuildingLocation } from "@/lib/buildings/search";
 import Link from "next/link";
 import LocationControls from "@/components/map/location-controls";
+import CrowdControls from "@/components/map/crowd-controls";
 import { type CurrentLocation } from "@/lib/navigation/geolocation";
 import {
     estimateWalkingMinutes,
@@ -120,11 +121,13 @@ const floorPlans: Record<string, string> = {
 export default function Map({
     walkingSpeed = "normal",
     personalised = false,
+    canViewCrowd = false,
 }: {
     // The logged-in student's preferred pace, used for walking time estimates.
     walkingSpeed?: WalkingSpeed;
     // True when walkingSpeed comes from the student's profile.
     personalised?: boolean;
+    canViewCrowd?: boolean;
 }) {
     // Shared Leaflet map references used by outdoor and indoor workflows.
     const mapContainer = useRef<HTMLDivElement>(null);
@@ -544,6 +547,7 @@ export default function Map({
                         Choose buildings to pin as your start and end, or click the map to place pins.
                     </p>
                     <LocationControls mapRef={mapInstance} onUse={useLocationStart} busy={pinRouteLoading || loading} />
+                    <CrowdControls mapRef={mapInstance} canView={canViewCrowd} />
                     {locationStart && <p className="mt-2 text-sm text-blue-900">Start: your location when selected. Moving does not change this start.</p>}
 
                     <div className="mt-4 space-y-4">

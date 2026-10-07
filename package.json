@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
+    "@js-temporal/polyfill": "0.5.1",
     "@vercel/functions": "^3.3.3",
     "drizzle-orm": "^0.45.1",
     "install": "^0.13.0",
@@ -33,6 +34,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^20",

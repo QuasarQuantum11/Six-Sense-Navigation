@@ -17,6 +17,7 @@ const CampusMap = dynamic(() => import("@/components/Map"), {
 export default function CampusMapLoader(props: {
   walkingSpeed: WalkingSpeed;
   personalised: boolean;
+  canViewCrowd: boolean;
 }) {
   return <CampusMap {...props} />;
 }

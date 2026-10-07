@@ -135,6 +135,30 @@ Manual acceptance checks:
 - Inspect network requests: route coordinates are in POST bodies; both route
   responses and error responses include `private, no-store`.
 
+## Estimated crowd activity
+
+Signed-in users can enable **Estimated crowd activity** on `/map`. Real mode
+uses voluntarily shared timetables and shows unavailable levels when the sample
+is insufficient. Students opt in with one saved timetable on their timetable
+page for 168 hours and can stop at any time. Upload alone never opts them in.
+
+The separate **Simulated AI-assisted timetables** mode replays 24 fictional
+student schedules on 2026-10-07. At 10:00 Melbourne time, LTB/Campus Centre/
+Menzies show high/medium/low; at 09:55 they show medium/medium/low. Synthetic
+inputs are separate from real records and use the same model. Simulation tests
+the rules and UI, not accuracy against actual campus crowds. Routes are not
+adjusted by crowd grades in this version.
+
+Before deploying, preview and apply the dedicated participation-table setup:
+
+```bash
+node scripts/crowd/setup.mjs
+node scripts/crowd/setup.mjs --apply
+```
+
+See [crowd model, provenance, API and verification](docs/crowd-density.md)
+for thresholds, expiry, privacy safeguards and acceptance scenarios.
+
 ## Verification
 
 ### LTB map connections

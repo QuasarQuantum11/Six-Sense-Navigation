@@ -28,11 +28,12 @@ async function getWalkingPreference(): Promise<{
 
 export default async function MapPage() {
   const preference = await getWalkingPreference();
+  const canViewCrowd = !!await getSession();
 
   return (
     <div className="flex flex-1 flex-col items-center bg-white w-full h-[calc(100vh-72px)] p-6">
       <div className="relative isolate min-h-0 w-full max-w-6xl flex-1 overflow-hidden rounded-xl border-2 border-gray-200 shadow-lg">
-        <CampusMapLoader {...preference} />
+        <CampusMapLoader {...preference} canViewCrowd={canViewCrowd} />
       </div>
     </div>
   );
