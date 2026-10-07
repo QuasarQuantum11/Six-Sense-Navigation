@@ -91,3 +91,52 @@ export function ChevronRightIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function HomeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m3.5 11 8.5-7 8.5 7" />
+      <path d="M5.5 9.5V20h13V9.5M10 20v-5.5h4V20" />
+    </Icon>
+  );
+}
+
+export function MapIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m9 5-5.5 2v12L9 17l6 2 5.5-2V5L15 7z" />
+      <path d="M9 5v12M15 7v12" />
+    </Icon>
+  );
+}
+
+export function GridIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+    </Icon>
+  );
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8" r="3.8" />
+      <path d="M4.5 20c0-3.8 3.4-6.2 7.5-6.2s7.5 2.4 7.5 6.2" />
+    </Icon>
+  );
+}
+
+// Brand mark: a route between two points.
+export function RouteIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="6" cy="18" r="2" />
+      <circle cx="18" cy="6" r="2" />
+      <path d="M8 18h5.5a3.5 3.5 0 0 0 0-7h-3a3.5 3.5 0 0 1 0-7H16" />
+    </Icon>
+  );
+}

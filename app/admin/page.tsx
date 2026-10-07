@@ -19,7 +19,7 @@ import {
   MessageIcon,
   TableIcon,
   UsersIcon,
-} from "@/components/admin/icons";
+} from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 

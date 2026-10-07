@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ChevronRightIcon } from "@/components/admin/icons";
+import { ChevronRightIcon } from "@/components/icons";
 
 const tones = {
   primary: {

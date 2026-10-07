@@ -2,6 +2,14 @@ import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 import { getSession } from "@/lib/auth/session";
 import { UserMenu } from "@/components/auth/user-menu";
+import {
+  BuildingIcon,
+  GridIcon,
+  TableIcon,
+  UserIcon,
+  UsersIcon,
+} from "@/components/icons";
+import { NavLink } from "@/components/nav-link";
 
 export async function AuthLinks() {
   const session = await getSession();
@@ -9,7 +17,7 @@ export async function AuthLinks() {
   if (!session) {
     return (
       <>
-        <Link href="/login" className="text-sm font-semibold text-accent hover:text-accent-dark">
+        <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-accent hover:text-accent-dark">
           Log in
         </Link>
         <Link href="/signup" className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-dark">
@@ -21,24 +29,25 @@ export async function AuthLinks() {
 
   return (
     <>
-      <Link
-        href={session.role === "admin" ? "/students" : `/students/${session.userId}`}
-        className="text-sm font-semibold text-accent hover:text-accent-dark"
-      >
-        {session.role === "admin" ? "Students" : "My timetable"}
-      </Link>
-      {session.role === "admin" && (
+      {session.role === "admin" ? (
         <>
-          <Link href="/admin" className="text-sm font-semibold text-accent hover:text-accent-dark">
+          <NavLink href="/admin" icon={<GridIcon size={18} />}>
             Dashboard
-          </Link>
-          <Link href="/admin/admins" className="text-sm font-semibold text-accent hover:text-accent-dark">
+          </NavLink>
+          <NavLink href="/students" icon={<UsersIcon size={18} />}>
+            Students
+          </NavLink>
+          <NavLink href="/admin/admins" icon={<UserIcon size={18} />}>
             Admins
-          </Link>
-          <Link href="/admins/buildings" className="text-sm font-semibold text-accent hover:text-accent-dark">
+          </NavLink>
+          <NavLink href="/admins/buildings" icon={<BuildingIcon size={18} />}>
             Buildings
-          </Link>
+          </NavLink>
         </>
+      ) : (
+        <NavLink href={`/students/${session.userId}`} icon={<TableIcon size={18} />}>
+          My timetable
+        </NavLink>
       )}
       <UserMenu
         username={session.username}
@@ -46,7 +55,7 @@ export async function AuthLinks() {
         userId={session.userId}
       />
       <form action={logout}>
-        <button className="text-sm font-semibold text-accent hover:text-accent-dark" type="submit">
+        <button className="rounded-lg px-3 py-2 text-sm font-semibold text-accent hover:text-accent-dark" type="submit">
           Log out
         </button>
       </form>
