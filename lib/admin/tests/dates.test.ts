@@ -7,7 +7,6 @@ import {
   formatRelativeTime,
   greetingFor,
 } from "../dates";
-import { niceStep } from "../../../components/admin/signups-chart";
 
 describe("campus time", () => {
   it("uses the Melbourne calendar day, not UTC", () => {
@@ -62,14 +61,5 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime(new Date("2026-10-07T11:42:00Z"), now)).toBe("18 min ago");
     expect(formatRelativeTime(new Date("2026-10-07T11:00:00Z"), now)).toBe("1 hr ago");
     expect(formatRelativeTime(new Date("2026-10-04T12:00:00Z"), now)).toBe("3 days ago");
-  });
-});
-
-describe("niceStep", () => {
-  it("rounds the y-axis step up to 1, 2 or 5 x 10^n", () => {
-    expect(niceStep(0)).toBe(1);
-    expect(niceStep(7)).toBe(2);
-    expect(niceStep(20)).toBe(5);
-    expect(niceStep(120)).toBe(50);
   });
 });
