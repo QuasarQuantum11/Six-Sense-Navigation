@@ -24,7 +24,7 @@ async function authorizeFeedbackAccess(feedbackId: string) {
     throw new Error("You are not allowed to modify this feedback.");
   }
 
-  return existing;
+  return { existing, session };
 }
 
 export async function updateFeedback(feedbackId: string, message: string) {
@@ -33,7 +33,12 @@ export async function updateFeedback(feedbackId: string, message: string) {
     throw new Error("Feedback message cannot be empty.");
   }
 
-  const existing = await authorizeFeedbackAccess(feedbackId);
+  const { existing, session } = await authorizeFeedbackAccess(feedbackId);
+
+  // Admins may change status or delete, but never rewrite a student's words.
+  if (session.userId !== existing.studentId) {
+    throw new Error("Only the author can edit this feedback.");
+  }
 
   await db
     .update(feedback)
@@ -46,7 +51,7 @@ export async function updateFeedback(feedbackId: string, message: string) {
 }
 
 export async function deleteFeedback(feedbackId: string) {
-  const existing = await authorizeFeedbackAccess(feedbackId);
+  const { existing } = await authorizeFeedbackAccess(feedbackId);
 
   await db.delete(feedback).where(eq(feedback.id, feedbackId));
 
