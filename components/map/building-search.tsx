@@ -11,7 +11,9 @@ export default function BuildingSearch({
     buildings,
     onSelect,
     onClear,
+    selectedLabel,
 }: {
+    selectedLabel?: string;
     label: string;
     placeholder: string;
     buildings: BuildingLocation[];
@@ -77,6 +79,7 @@ export default function BuildingSearch({
                     setActiveIndex(-1);
                 } else {
                     setQuery("");
+                    if (selectedLabel) onClear?.();
                     clearSelection();
                 }
                 break;
@@ -105,11 +108,12 @@ export default function BuildingSearch({
                     aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
                     autoComplete="off"
                     placeholder={placeholder}
-                    value={query}
+                    value={query || (!hasSelection ? selectedLabel ?? "" : "")}
                     onChange={(event) => {
                         setQuery(event.target.value);
                         setOpen(true);
                         setActiveIndex(-1);
+                        if (selectedLabel) onClear?.();
                         clearSelection();
                     }}
                     onFocus={() => setOpen(true)}

@@ -6,6 +6,8 @@ import { timetableBuildings, timetables } from "@/lib/timetables/schema";
 import { TimetableSelector } from "./timetable-selector";
 import { requireStudentOrAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
+import ParticipationForm from "@/components/crowd/participation-form";
+import { readParticipation } from "@/lib/crowd/data";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +61,8 @@ export default async function StudentPage({
     })),
   }));
 
+  const participationStatus = session.role === "student" && session.userId === id ? await readParticipation(id) : null;
+
   return (
     <div className="flex flex-1 flex-col items-center bg-white">
       <main className="flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:px-16">
@@ -72,6 +76,7 @@ export default async function StudentPage({
         </div>
 
         <TimetableSelector studentId={id} timetables={timetableOptions} />
+        {participationStatus && <ParticipationForm key={JSON.stringify([participationStatus.timetableId, participationStatus.expiresAt, participationStatus.available, timetableOptions.map(t => t.id)])} timetables={timetableOptions.map(t => ({ id: t.id, name: t.name }))} initialStatus={participationStatus} />}
       </main>
     </div>
   );
