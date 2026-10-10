@@ -111,7 +111,7 @@ export async function adminSignup(
     return { message: "Unable to create your account. Please try again." };
   }
 
-  redirect("/admin/feedback");
+  redirect("/admin");
 }
 
 export async function login(
@@ -152,7 +152,7 @@ export async function login(
     return { message: "Unable to log in right now. Please try again." };
   }
 
-  redirect(role === "admin" ? "/admin/feedback" : "/");
+  redirect(role === "admin" ? "/admin" : "/");
 }
 
 export async function logout(): Promise<void> {

@@ -3,18 +3,15 @@ import { db } from "@/lib/db/client";
 import { feedback } from "@/lib/feedback/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
+import { FeedbackStatusSelect } from "@/components/feedback/feedback-status-select";
+import { expireStaleFeedback } from "@/lib/feedback/expire";
 
 export const dynamic = "force-dynamic";
 
-const statusLabels: Record<string, string> = {
-  new: "New",
-  in_review: "In review",
-  resolved: "Resolved",
-  dismissed: "Dismissed",
-};
-
 export default async function AllFeedbackPage() {
   await requireAdmin();
+
+  await expireStaleFeedback();
 
   const allFeedback = await db.query.feedback.findMany({
     orderBy: desc(feedback.createdAt),
@@ -60,8 +57,11 @@ export default async function AllFeedbackPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-foreground">{item.message}</td>
-                  <td className="px-4 py-3 text-muted">
-                    {statusLabels[item.status] ?? item.status}
+                  <td className="px-4 py-3">
+                    <FeedbackStatusSelect
+                      feedbackId={item.id}
+                      status={item.status}
+                    />
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {new Date(item.createdAt).toLocaleString()}
