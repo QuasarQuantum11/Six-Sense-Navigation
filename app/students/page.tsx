@@ -1,14 +1,54 @@
 import Link from "next/link";
+import { asc, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
+import { SortableHeader } from "@/components/sortable-header";
+import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
 
-export default async function StudentsPage() {
+const PATH = "/students";
+
+// Walking speed sorts slowest to fastest (the order of the database enum).
+const sortColumns = {
+  username: sql`lower(${students.username})`,
+  profilePicture: sql`${students.profilePicture}`,
+  walkingSpeed: sql`${students.walkingSpeed}`,
+  createdAt: sql`${students.createdAt}`,
+  id: sql`${students.id}`,
+};
+const sortKeys = Object.keys(sortColumns) as (keyof typeof sortColumns)[];
+
+export default async function StudentsPage({
+  searchParams,
+}: PageProps<"/students">) {
   await requireAdmin();
-  const allStudents = await db.select({ id: students.id, username: students.username, profilePicture: students.profilePicture, walkingSpeed: students.walkingSpeed, createdAt: students.createdAt }).from(students).orderBy(students.createdAt);
+
+  const params = await searchParams;
+  const sort = parseSort(params, sortKeys);
+
+  const allStudents = await db
+    .select({
+      id: students.id,
+      username: students.username,
+      profilePicture: students.profilePicture,
+      walkingSpeed: students.walkingSpeed,
+      createdAt: students.createdAt,
+    })
+    .from(students)
+    .orderBy(...orderByFor(sortColumns, sort, [asc(students.createdAt)]));
+
+  const header = (label: string, sortKey: (typeof sortKeys)[number]) => (
+    <SortableHeader
+      label={label}
+      sortKey={sortKey}
+      sort={sort}
+      path={PATH}
+      params={params}
+    />
+  );
 
   return (
     <div className="flex flex-1 flex-col items-center bg-white">
@@ -29,19 +69,11 @@ export default async function StudentsPage() {
           <table className="w-full min-w-full text-left text-sm">
             <thead className="bg-panel">
               <tr>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Username
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Profile Picture
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Walking Speed
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Created At
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">ID</th>
+                {header("Username", "username")}
+                {header("Profile Picture", "profilePicture")}
+                {header("Walking Speed", "walkingSpeed")}
+                {header("Created At", "createdAt")}
+                {header("ID", "id")}
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/20">

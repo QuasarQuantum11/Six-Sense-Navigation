@@ -5,18 +5,37 @@ import { buildings, timetableBuildings } from "@/lib/timetables/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
 import { BuildingRowActions } from "@/components/buildings/building-row-actions";
+import { SortableHeader } from "@/components/sortable-header";
+import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
+
+const PATH = "/admins/buildings";
+
+// Buildings with no location sort last in either direction.
+const sortColumns = {
+  name: sql`lower(${buildings.name})`,
+  latitude: sql`${buildings.latitude}`,
+  longitude: sql`${buildings.longitude}`,
+  timetableEntries: sql`count(${timetableBuildings.id})`,
+  createdAt: sql`${buildings.createdAt}`,
+};
+const sortKeys = Object.keys(sortColumns) as (keyof typeof sortColumns)[];
 
 function formatCoordinate(value: number | null) {
   return value === null ? null : value.toFixed(6);
 }
 
-export default async function BuildingsPage() {
+export default async function BuildingsPage({
+  searchParams,
+}: PageProps<"/admins/buildings">) {
   await requireAdmin();
 
-  // Buildings missing a location are listed first, since those still need
-  // attention before they can appear in map search.
+  const params = await searchParams;
+  const sort = parseSort(params, sortKeys);
+
+  // By default, buildings missing a location are listed first, since those still
+  // need attention before they can appear in map search.
   const allBuildings = await db
     .select({
       id: buildings.id,
@@ -30,9 +49,21 @@ export default async function BuildingsPage() {
     .leftJoin(timetableBuildings, eq(timetableBuildings.buildingId, buildings.id))
     .groupBy(buildings.id)
     .orderBy(
-      sql`(${buildings.latitude} IS NULL OR ${buildings.longitude} IS NULL) DESC`,
-      asc(buildings.name),
+      ...orderByFor(sortColumns, sort, [
+        sql`(${buildings.latitude} IS NULL OR ${buildings.longitude} IS NULL) DESC`,
+        asc(buildings.name),
+      ]),
     );
+
+  const header = (label: string, sortKey: (typeof sortKeys)[number]) => (
+    <SortableHeader
+      label={label}
+      sortKey={sortKey}
+      sort={sort}
+      path={PATH}
+      params={params}
+    />
+  );
 
   const locatedCount = allBuildings.filter(
     (building) => building.latitude !== null && building.longitude !== null,
@@ -62,19 +93,11 @@ export default async function BuildingsPage() {
           <table className="w-full min-w-full text-left text-sm">
             <thead className="bg-panel">
               <tr>
-                <th className="px-4 py-3 font-semibold text-primary">Name</th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Latitude
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Longitude
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Timetable entries
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Created At
-                </th>
+                {header("Name", "name")}
+                {header("Latitude", "latitude")}
+                {header("Longitude", "longitude")}
+                {header("Timetable entries", "timetableEntries")}
+                {header("Created At", "createdAt")}
                 <th className="px-4 py-3 font-semibold text-primary">
                   Actions
                 </th>
