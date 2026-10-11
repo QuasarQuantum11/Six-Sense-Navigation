@@ -6,6 +6,8 @@ import { BackLink } from "@/components/back-link";
 import { SortableHeader } from "@/components/sortable-header";
 import { Pagination } from "@/components/pagination";
 import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
+import { TableSearch } from "@/components/table-search";
+import { parseSearch, searchCondition } from "@/lib/table-search";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +31,17 @@ export default async function AdminsPage({
   const params = await searchParams;
   const sort = parseSort(params, sortKeys);
 
-  const [{ total }] = await db.select({ total: count() }).from(admins);
+  const query = parseSearch(params);
+  const match = searchCondition(query, [
+    admins.username,
+    admins.email,
+    sql`${admins.id}::text`,
+  ]);
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(admins)
+    .where(match);
   const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
 
   const allAdmins = await db
@@ -41,6 +53,7 @@ export default async function AdminsPage({
       createdAt: admins.createdAt,
     })
     .from(admins)
+    .where(match)
     .orderBy(...orderByFor(sortColumns, sort, [asc(admins.createdAt)]))
     .limit(pageInfo.pageSize)
     .offset(pageInfo.offset);
@@ -62,6 +75,14 @@ export default async function AdminsPage({
           <h1 className="text-2xl font-bold text-primary">Admins</h1>
           <BackLink href="/">← Back home</BackLink>
         </div>
+
+        <TableSearch
+          path={PATH}
+          params={params}
+          query={query}
+          label="Search admins"
+          hint="Searches username, email and ID."
+        />
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
@@ -95,7 +116,7 @@ export default async function AdminsPage({
               {allAdmins.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-muted">
-                    No admins yet.
+                    {query ? `No admins match “${query}”.` : "No admins yet."}
                   </td>
                 </tr>
               )}

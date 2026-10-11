@@ -1,4 +1,4 @@
-import { count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { feedback } from "@/lib/feedback/schema";
 import { students } from "@/lib/students/schema";
@@ -10,6 +10,8 @@ import { SortableHeader } from "@/components/sortable-header";
 import { expireStaleFeedback } from "@/lib/feedback/expire";
 import { Pagination } from "@/components/pagination";
 import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
+import { TableSearch } from "@/components/table-search";
+import { parseSearch, searchCondition } from "@/lib/table-search";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
@@ -38,10 +40,22 @@ export default async function AllFeedbackPage({
   const statusParam = params[STATUS_PARAM];
   const newOnly = (Array.isArray(statusParam) ? statusParam[0] : statusParam) === "new";
 
-  const newFilter = newOnly ? eq(feedback.status, "new") : undefined;
+  const query = parseSearch(params);
+  const match = searchCondition(query, [feedback.message, students.username]);
+  const visible = and(newOnly ? eq(feedback.status, "new") : undefined, match);
+
   const [[{ total }], [newTotal]] = await Promise.all([
-    db.select({ total: count() }).from(feedback).where(newFilter),
-    db.select({ count: count() }).from(feedback).where(eq(feedback.status, "new")),
+    db
+      .select({ total: count() })
+      .from(feedback)
+      .leftJoin(students, eq(feedback.studentId, students.id))
+      .where(visible),
+    // The button's count follows the search, so it shows how many New items match.
+    db
+      .select({ count: count() })
+      .from(feedback)
+      .leftJoin(students, eq(feedback.studentId, students.id))
+      .where(and(eq(feedback.status, "new"), match)),
   ]);
   const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
 
@@ -55,7 +69,7 @@ export default async function AllFeedbackPage({
     })
     .from(feedback)
     .leftJoin(students, eq(feedback.studentId, students.id))
-    .where(newFilter)
+    .where(visible)
     .orderBy(...orderByFor(sortColumns, sort, [desc(feedback.createdAt)]))
     .limit(pageInfo.pageSize)
     .offset(pageInfo.offset);
@@ -78,12 +92,21 @@ export default async function AllFeedbackPage({
           <BackLink href="/">← Back home</BackLink>
         </div>
 
-        <NewOnlyToggle
-          active={newOnly}
-          count={newTotal.count}
-          path={PATH}
-          params={params}
-        />
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+          <TableSearch
+            path={PATH}
+            params={params}
+            query={query}
+            label="Search feedback"
+            hint="Searches the message and who submitted it."
+          />
+          <NewOnlyToggle
+            active={newOnly}
+            count={newTotal.count}
+            path={PATH}
+            params={params}
+          />
+        </div>
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
@@ -122,9 +145,11 @@ export default async function AllFeedbackPage({
               {allFeedback.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-muted">
-                    {newOnly
-                      ? "No feedback with the New status."
-                      : "No feedback submitted yet."}
+                    {query
+                      ? `No ${newOnly ? "New " : ""}feedback matches “${query}”.`
+                      : newOnly
+                        ? "No feedback with the New status."
+                        : "No feedback submitted yet."}
                   </td>
                 </tr>
               )}

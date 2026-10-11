@@ -7,6 +7,8 @@ import { BackLink } from "@/components/back-link";
 import { BuildingRowActions } from "@/components/buildings/building-row-actions";
 import { SortableHeader } from "@/components/sortable-header";
 import { Pagination } from "@/components/pagination";
+import { TableSearch } from "@/components/table-search";
+import { parseSearch, searchCondition } from "@/lib/table-search";
 import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
@@ -46,7 +48,13 @@ export default async function BuildingsPage({
       ),
     })
     .from(buildings);
-  const pageInfo = paginate(parsePage(params), parsePageSize(params), totals.total);
+  const query = parseSearch(params);
+  const match = searchCondition(query, [buildings.name]);
+  const [{ matching }] = await db
+    .select({ matching: count() })
+    .from(buildings)
+    .where(match);
+  const pageInfo = paginate(parsePage(params), parsePageSize(params), matching);
 
   const [pageBuildings, mergeTargets] = await Promise.all([
     db
@@ -60,6 +68,7 @@ export default async function BuildingsPage({
       })
       .from(buildings)
       .leftJoin(timetableBuildings, eq(timetableBuildings.buildingId, buildings.id))
+      .where(match)
       .groupBy(buildings.id)
       .orderBy(
         ...orderByFor(sortColumns, sort, [
@@ -110,6 +119,14 @@ export default async function BuildingsPage({
           {totals.located} of {totals.total} buildings have a location.
           Buildings without one won&apos;t appear in map search.
         </p>
+
+        <TableSearch
+          path={PATH}
+          params={params}
+          query={query}
+          label="Search buildings"
+          hint="Searches the building name."
+        />
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
@@ -180,7 +197,7 @@ export default async function BuildingsPage({
               {pageBuildings.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-muted">
-                    No buildings yet.
+                    {query ? `No buildings match “${query}”.` : "No buildings yet."}
                   </td>
                 </tr>
               )}
@@ -188,7 +205,7 @@ export default async function BuildingsPage({
           </table>
         </div>
 
-        <Pagination path={PATH} params={params} info={pageInfo} totalItems={totals.total} />
+        <Pagination path={PATH} params={params} info={pageInfo} totalItems={matching} />
       </main>
     </div>
   );

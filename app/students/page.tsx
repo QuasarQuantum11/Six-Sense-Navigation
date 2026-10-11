@@ -7,6 +7,8 @@ import { BackLink } from "@/components/back-link";
 import { SortableHeader } from "@/components/sortable-header";
 import { Pagination } from "@/components/pagination";
 import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
+import { TableSearch } from "@/components/table-search";
+import { parseSearch, searchCondition } from "@/lib/table-search";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +33,17 @@ export default async function StudentsPage({
   const params = await searchParams;
   const sort = parseSort(params, sortKeys);
 
-  const [{ total }] = await db.select({ total: count() }).from(students);
+  const query = parseSearch(params);
+  const match = searchCondition(query, [
+    students.username,
+    students.email,
+    sql`${students.id}::text`,
+  ]);
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(students)
+    .where(match);
   const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
 
   const allStudents = await db
@@ -43,6 +55,7 @@ export default async function StudentsPage({
       createdAt: students.createdAt,
     })
     .from(students)
+    .where(match)
     .orderBy(...orderByFor(sortColumns, sort, [asc(students.createdAt)]))
     .limit(pageInfo.pageSize)
     .offset(pageInfo.offset);
@@ -71,6 +84,14 @@ export default async function StudentsPage({
         >
           View all feedback
         </Link>
+
+        <TableSearch
+          path={PATH}
+          params={params}
+          query={query}
+          label="Search students"
+          hint="Searches username, email and ID."
+        />
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
@@ -106,7 +127,7 @@ export default async function StudentsPage({
               {allStudents.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-muted">
-                    No students yet.
+                    {query ? `No students match “${query}”.` : "No students yet."}
                   </td>
                 </tr>
               )}
