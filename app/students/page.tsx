@@ -18,6 +18,7 @@ const PATH = "/students";
 // Walking speed sorts slowest to fastest (the order of the database enum).
 const sortColumns = {
   username: sql`lower(${students.username})`,
+  email: sql`lower(${students.email})`,
   profilePicture: sql`${students.profilePicture}`,
   walkingSpeed: sql`${students.walkingSpeed}`,
   createdAt: sql`${students.createdAt}`,
@@ -50,6 +51,7 @@ export default async function StudentsPage({
     .select({
       id: students.id,
       username: students.username,
+      email: students.email,
       profilePicture: students.profilePicture,
       walkingSpeed: students.walkingSpeed,
       createdAt: students.createdAt,
@@ -78,26 +80,28 @@ export default async function StudentsPage({
           <BackLink href="/">← Back home</BackLink>
         </div>
 
-        <Link
-          href="/admin/feedback"
-          className="self-start rounded-md bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-dark"
-        >
-          View all feedback
-        </Link>
-
-        <TableSearch
-          path={PATH}
-          params={params}
-          query={query}
-          label="Search students"
-          hint="Searches username, email and ID."
-        />
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+          <TableSearch
+            path={PATH}
+            params={params}
+            query={query}
+            label="Search students"
+            hint="Searches username, email and ID."
+          />
+          <Link
+            href="/admin/feedback"
+            className="ml-auto rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-dark"
+          >
+            View all feedback
+          </Link>
+        </div>
 
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
             <thead className="bg-panel">
               <tr>
                 {header("Username", "username")}
+                {header("Email", "email")}
                 {header("Profile Picture", "profilePicture")}
                 {header("Walking Speed", "walkingSpeed")}
                 {header("Created At", "createdAt")}
@@ -110,6 +114,7 @@ export default async function StudentsPage({
                   <td className="px-4 py-3 font-semibold text-accent">
                     {student.username}
                   </td>
+                  <td className="px-4 py-3 text-muted">{student.email}</td>
                   <td className="px-4 py-3 text-muted">
                     {student.profilePicture ?? "—"}
                   </td>
@@ -126,7 +131,7 @@ export default async function StudentsPage({
               ))}
               {allStudents.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={6}className="px-4 py-6 text-center text-muted">
                     {query ? `No students match “${query}”.` : "No students yet."}
                   </td>
                 </tr>

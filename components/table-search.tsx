@@ -60,7 +60,7 @@ export function TableSearch({
           <Link
             href={clearHref}
             replace
-            className="text-sm font-semibold text-accent hover:text-accent-dark"
+            className="ml-3 text-sm font-semibold text-accent hover:text-accent-dark"
           >
             Clear search
           </Link>
