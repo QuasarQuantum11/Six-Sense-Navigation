@@ -8,6 +8,8 @@ import { FeedbackStatusSelect } from "@/components/feedback/feedback-status-sele
 import { NewOnlyToggle, STATUS_PARAM } from "@/components/feedback/new-only-toggle";
 import { SortableHeader } from "@/components/sortable-header";
 import { expireStaleFeedback } from "@/lib/feedback/expire";
+import { Pagination } from "@/components/pagination";
+import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
@@ -36,21 +38,27 @@ export default async function AllFeedbackPage({
   const statusParam = params[STATUS_PARAM];
   const newOnly = (Array.isArray(statusParam) ? statusParam[0] : statusParam) === "new";
 
-  const [allFeedback, [newTotal]] = await Promise.all([
-    db
-      .select({
-        id: feedback.id,
-        message: feedback.message,
-        status: feedback.status,
-        createdAt: feedback.createdAt,
-        username: students.username,
-      })
-      .from(feedback)
-      .leftJoin(students, eq(feedback.studentId, students.id))
-      .where(newOnly ? eq(feedback.status, "new") : undefined)
-      .orderBy(...orderByFor(sortColumns, sort, [desc(feedback.createdAt)])),
+  const newFilter = newOnly ? eq(feedback.status, "new") : undefined;
+  const [[{ total }], [newTotal]] = await Promise.all([
+    db.select({ total: count() }).from(feedback).where(newFilter),
     db.select({ count: count() }).from(feedback).where(eq(feedback.status, "new")),
   ]);
+  const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
+
+  const allFeedback = await db
+    .select({
+      id: feedback.id,
+      message: feedback.message,
+      status: feedback.status,
+      createdAt: feedback.createdAt,
+      username: students.username,
+    })
+    .from(feedback)
+    .leftJoin(students, eq(feedback.studentId, students.id))
+    .where(newFilter)
+    .orderBy(...orderByFor(sortColumns, sort, [desc(feedback.createdAt)]))
+    .limit(pageInfo.pageSize)
+    .offset(pageInfo.offset);
 
   const header = (label: string, sortKey: (typeof sortKeys)[number]) => (
     <SortableHeader
@@ -123,6 +131,8 @@ export default async function AllFeedbackPage({
             </tbody>
           </table>
         </div>
+
+        <Pagination path={PATH} params={params} info={pageInfo} totalItems={total} />
       </main>
     </div>
   );

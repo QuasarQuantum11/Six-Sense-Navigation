@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { asc, sql } from "drizzle-orm";
+import { asc, count, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
 import { SortableHeader } from "@/components/sortable-header";
+import { Pagination } from "@/components/pagination";
+import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,9 @@ export default async function StudentsPage({
   const params = await searchParams;
   const sort = parseSort(params, sortKeys);
 
+  const [{ total }] = await db.select({ total: count() }).from(students);
+  const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
+
   const allStudents = await db
     .select({
       id: students.id,
@@ -38,7 +43,9 @@ export default async function StudentsPage({
       createdAt: students.createdAt,
     })
     .from(students)
-    .orderBy(...orderByFor(sortColumns, sort, [asc(students.createdAt)]));
+    .orderBy(...orderByFor(sortColumns, sort, [asc(students.createdAt)]))
+    .limit(pageInfo.pageSize)
+    .offset(pageInfo.offset);
 
   const header = (label: string, sortKey: (typeof sortKeys)[number]) => (
     <SortableHeader
@@ -106,6 +113,8 @@ export default async function StudentsPage({
             </tbody>
           </table>
         </div>
+
+        <Pagination path={PATH} params={params} info={pageInfo} totalItems={total} />
       </main>
     </div>
   );

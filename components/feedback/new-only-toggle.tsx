@@ -1,5 +1,5 @@
 import Form from "next/form";
-import type { SearchParams } from "@/lib/table-sort";
+import { PAGE_PARAM, carriedParams, type SearchParams } from "@/lib/table-sort";
 
 export const STATUS_PARAM = "status";
 
@@ -18,13 +18,8 @@ export function NewOnlyToggle({
   path: string;
   params: SearchParams;
 }) {
-  const carried = Object.entries(params).flatMap(([name, value]) =>
-    name === STATUS_PARAM
-      ? []
-      : (Array.isArray(value) ? value : value === undefined ? [] : [value]).map(
-          (item) => [name, item] as const,
-        ),
-  );
+  // Switching the filter restarts from the first page, so the page is not carried over.
+  const carried = carriedParams(params, [STATUS_PARAM, PAGE_PARAM]);
 
   return (
     <Form action={path} className="self-start">

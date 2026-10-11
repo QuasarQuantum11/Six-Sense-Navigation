@@ -1,9 +1,11 @@
-import { asc, sql } from "drizzle-orm";
+import { asc, count, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { admins } from "@/lib/admins/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
 import { SortableHeader } from "@/components/sortable-header";
+import { Pagination } from "@/components/pagination";
+import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +29,9 @@ export default async function AdminsPage({
   const params = await searchParams;
   const sort = parseSort(params, sortKeys);
 
+  const [{ total }] = await db.select({ total: count() }).from(admins);
+  const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
+
   const allAdmins = await db
     .select({
       id: admins.id,
@@ -36,7 +41,9 @@ export default async function AdminsPage({
       createdAt: admins.createdAt,
     })
     .from(admins)
-    .orderBy(...orderByFor(sortColumns, sort, [asc(admins.createdAt)]));
+    .orderBy(...orderByFor(sortColumns, sort, [asc(admins.createdAt)]))
+    .limit(pageInfo.pageSize)
+    .offset(pageInfo.offset);
 
   const header = (label: string, sortKey: (typeof sortKeys)[number]) => (
     <SortableHeader
@@ -95,6 +102,8 @@ export default async function AdminsPage({
             </tbody>
           </table>
         </div>
+
+        <Pagination path={PATH} params={params} info={pageInfo} totalItems={total} />
       </main>
     </div>
   );

@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
 import { BuildingRowActions } from "@/components/buildings/building-row-actions";
 import { SortableHeader } from "@/components/sortable-header";
+import { Pagination } from "@/components/pagination";
+import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
 import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
@@ -36,24 +38,48 @@ export default async function BuildingsPage({
 
   // By default, buildings missing a location are listed first, since those still
   // need attention before they can appear in map search.
-  const allBuildings = await db
+  const [totals] = await db
     .select({
-      id: buildings.id,
-      name: buildings.name,
-      latitude: buildings.latitude,
-      longitude: buildings.longitude,
-      createdAt: buildings.createdAt,
-      timetableEntries: count(timetableBuildings.id),
+      total: count(),
+      located: count(
+        sql`CASE WHEN ${buildings.latitude} IS NOT NULL AND ${buildings.longitude} IS NOT NULL THEN 1 END`,
+      ),
     })
-    .from(buildings)
-    .leftJoin(timetableBuildings, eq(timetableBuildings.buildingId, buildings.id))
-    .groupBy(buildings.id)
-    .orderBy(
-      ...orderByFor(sortColumns, sort, [
-        sql`(${buildings.latitude} IS NULL OR ${buildings.longitude} IS NULL) DESC`,
-        asc(buildings.name),
-      ]),
-    );
+    .from(buildings);
+  const pageInfo = paginate(parsePage(params), parsePageSize(params), totals.total);
+
+  const [pageBuildings, mergeTargets] = await Promise.all([
+    db
+    .select({
+        id: buildings.id,
+        name: buildings.name,
+        latitude: buildings.latitude,
+        longitude: buildings.longitude,
+        createdAt: buildings.createdAt,
+        timetableEntries: count(timetableBuildings.id),
+      })
+      .from(buildings)
+      .leftJoin(timetableBuildings, eq(timetableBuildings.buildingId, buildings.id))
+      .groupBy(buildings.id)
+      .orderBy(
+        ...orderByFor(sortColumns, sort, [
+          sql`(${buildings.latitude} IS NULL OR ${buildings.longitude} IS NULL) DESC`,
+          asc(buildings.name),
+        ]),
+      )
+      .limit(pageInfo.pageSize)
+      .offset(pageInfo.offset),
+    // Merging can target any building, not just the ones on this page.
+    db
+      .select({
+        id: buildings.id,
+        name: buildings.name,
+        latitude: buildings.latitude,
+        longitude: buildings.longitude,
+      })
+      .from(buildings)
+      .orderBy(asc(buildings.name)),
+  ]);
 
   const header = (label: string, sortKey: (typeof sortKeys)[number]) => (
     <SortableHeader
@@ -64,10 +90,6 @@ export default async function BuildingsPage({
       params={params}
     />
   );
-
-  const locatedCount = allBuildings.filter(
-    (building) => building.latitude !== null && building.longitude !== null,
-  ).length;
 
   return (
     <div className="flex flex-1 flex-col items-center bg-white">
@@ -85,7 +107,7 @@ export default async function BuildingsPage({
         </Link>
 
         <p className="text-sm text-muted">
-          {locatedCount} of {allBuildings.length} buildings have a location.
+          {totals.located} of {totals.total} buildings have a location.
           Buildings without one won&apos;t appear in map search.
         </p>
 
@@ -104,7 +126,7 @@ export default async function BuildingsPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/20">
-              {allBuildings.map((building) => {
+              {pageBuildings.map((building) => {
                 const latitude = formatCoordinate(building.latitude);
                 const longitude = formatCoordinate(building.longitude);
 
@@ -149,13 +171,13 @@ export default async function BuildingsPage({
                     <td className="px-4 py-3">
                       <BuildingRowActions
                         building={building}
-                        allBuildings={allBuildings}
+                        allBuildings={mergeTargets}
                       />
                     </td>
                   </tr>
                 );
               })}
-              {allBuildings.length === 0 && (
+              {pageBuildings.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-muted">
                     No buildings yet.
@@ -165,6 +187,8 @@ export default async function BuildingsPage({
             </tbody>
           </table>
         </div>
+
+        <Pagination path={PATH} params={params} info={pageInfo} totalItems={totals.total} />
       </main>
     </div>
   );
