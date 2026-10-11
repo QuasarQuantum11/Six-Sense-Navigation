@@ -1,13 +1,72 @@
+import { asc, count, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { admins } from "@/lib/admins/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
+import { SortableHeader } from "@/components/sortable-header";
+import { Pagination } from "@/components/pagination";
+import { paginate, parsePage, parsePageSize } from "@/lib/pagination";
+import { TableSearch } from "@/components/table-search";
+import { parseSearch, searchCondition } from "@/lib/table-search";
+import { orderByFor, parseSort } from "@/lib/table-sort";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminsPage() {
+const PATH = "/admin/admins";
+
+const sortColumns = {
+  username: sql`lower(${admins.username})`,
+  email: sql`lower(${admins.email})`,
+  emailVerified: sql`${admins.emailVerified}`,
+  createdAt: sql`${admins.createdAt}`,
+  id: sql`${admins.id}`,
+};
+const sortKeys = Object.keys(sortColumns) as (keyof typeof sortColumns)[];
+
+export default async function AdminsPage({
+  searchParams,
+}: PageProps<"/admin/admins">) {
   await requireAdmin();
-  const allAdmins = await db.select({ id: admins.id, username: admins.username, email: admins.email, emailVerified: admins.emailVerified, createdAt: admins.createdAt }).from(admins).orderBy(admins.createdAt);
+
+  const params = await searchParams;
+  const sort = parseSort(params, sortKeys);
+
+  const query = parseSearch(params);
+  const match = searchCondition(query, [
+    admins.username,
+    admins.email,
+    sql`${admins.id}::text`,
+  ]);
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(admins)
+    .where(match);
+  const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
+
+  const allAdmins = await db
+    .select({
+      id: admins.id,
+      username: admins.username,
+      email: admins.email,
+      emailVerified: admins.emailVerified,
+      createdAt: admins.createdAt,
+    })
+    .from(admins)
+    .where(match)
+    .orderBy(...orderByFor(sortColumns, sort, [asc(admins.createdAt)]))
+    .limit(pageInfo.pageSize)
+    .offset(pageInfo.offset);
+
+  const header = (label: string, sortKey: (typeof sortKeys)[number]) => (
+    <SortableHeader
+      label={label}
+      sortKey={sortKey}
+      sort={sort}
+      path={PATH}
+      params={params}
+    />
+  );
 
   return (
     <div className="flex flex-1 flex-col items-center bg-white">
@@ -17,23 +76,23 @@ export default async function AdminsPage() {
           <BackLink href="/">← Back home</BackLink>
         </div>
 
+        <TableSearch
+          path={PATH}
+          params={params}
+          query={query}
+          label="Search admins"
+          hint="Searches username, email and ID."
+        />
+
         <div className="overflow-x-auto rounded-lg border-2 border-primary">
           <table className="w-full min-w-full text-left text-sm">
             <thead className="bg-panel">
               <tr>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Username
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Email
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Email Verified
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">
-                  Created At
-                </th>
-                <th className="px-4 py-3 font-semibold text-primary">ID</th>
+                {header("Username", "username")}
+                {header("Email", "email")}
+                {header("Email Verified", "emailVerified")}
+                {header("Created At", "createdAt")}
+                {header("ID", "id")}
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/20">
@@ -57,13 +116,15 @@ export default async function AdminsPage() {
               {allAdmins.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-muted">
-                    No admins yet.
+                    {query ? `No admins match “${query}”.` : "No admins yet."}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        <Pagination path={PATH} params={params} info={pageInfo} totalItems={total} />
       </main>
     </div>
   );
