@@ -2,9 +2,9 @@
 // preference. "normal" is a typical adult pace (about 5 km/h); "accessible"
 // allows for a slower pace, e.g. with a mobility aid.
 export const WALKING_SPEEDS_MPS = {
-  accessible: 1.0,
-  normal: 1.4,
-  fast: 1.8,
+  accessible: 4/3.6,
+  normal: 5/3.6,
+  fast: 6/3.6,
 } as const;
 
 export type WalkingSpeed = keyof typeof WALKING_SPEEDS_MPS;
@@ -22,7 +22,7 @@ export function estimateWalkingMinutes(
   if (!Number.isFinite(distanceMeters) || distanceMeters < 0) {
     throw new RangeError("Distance must be a non-negative number.");
   }
-  const minutes = distanceMeters / WALKING_SPEEDS_MPS[speed] / 60;
+  const minutes = (distanceMeters / WALKING_SPEEDS_MPS[speed]) / 60;
   return Math.max(1, Math.ceil(minutes));
 }
 
