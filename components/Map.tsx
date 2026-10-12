@@ -139,6 +139,7 @@ export default function Map({
     const pickingRef = useRef<"from" | "to" | null>(null);
     const revisionRef = useRef(0);
     const [panel, setPanel] = useState<"route" | "crowd">("route");
+    const [searchPanelCollapsed, setSearchPanelCollapsed] = useState(false);
     const [routeType, setRouteType] = useState<"building" | "room">("building");
     const [picking, setPicking] = useState<"from" | "to" | null>(null);
     const [mapStart, setMapStart] = useState(false);
@@ -280,10 +281,10 @@ export default function Map({
 
     useEffect(() => {
         if (view === "outdoor") {
-            // Leaflet needs a size refresh after its container becomes visible.
+            // Refresh Leaflet when the map view or sidebar width changes.
             requestAnimationFrame(() => mapInstance.current?.invalidateSize());
         }
-    }, [view]);
+    }, [view, searchPanelCollapsed]);
 
     useEffect(() => {
         const map = mapInstance.current;
@@ -517,14 +518,21 @@ export default function Map({
             {/* Keep the campus map mounted so its route remains available on return. */}
             <div
                 ref={mapContainer}
-                className="absolute inset-0 lg:left-[360px]"
+                className={`absolute inset-0`}
                 style={{ display: view === "outdoor" ? "block" : "none" }}
             />
 
-            <aside hidden={view !== "outdoor"} className="absolute left-0 top-0 z-[1000] flex max-h-[65%] w-[min(360px,100%)] lg:h-full lg:max-h-none flex-col border-r border-slate-200 bg-white shadow-lg" aria-label="Campus map controls">
+            <aside hidden={view !== "outdoor" || searchPanelCollapsed} className="absolute left-0 top-0 z-[1000] flex max-h-[65%] w-[min(360px,100%)] lg:h-full lg:max-h-none flex-col border-r border-slate-200 bg-white shadow-lg" aria-label="Campus map controls">
                 <header className="shrink-0 border-b border-slate-200 px-5 pt-5">
                     <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Clayton campus</p>
                     <h2 className="mt-1 text-2xl font-bold text-slate-900">Explore campus</h2>
+                    <button
+                        type="button"
+                        onClick={() => setSearchPanelCollapsed(true)}
+                        className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                        Minimise search panel
+                    </button>
                     <div className="mt-4 grid grid-cols-2 gap-1" aria-label="Map tasks">
                         {([ ["route", "Plan a route"], ["crowd", "Crowd estimates"] ] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={panel === value} onClick={() => { setPanel(value); pickingRef.current = null; setPicking(null); }} className={`border-b-2 px-2 py-3 text-sm font-semibold ${panel === value ? "border-blue-700 text-blue-800" : "border-transparent text-slate-500 hover:text-slate-900"}`}>{label}</button>)}
                     </div>
@@ -650,11 +658,20 @@ export default function Map({
                     </details>
                 </div>
             </aside>
+            {view === "outdoor" && searchPanelCollapsed && (
+                <button
+                    type="button"
+                    onClick={() => setSearchPanelCollapsed(false)}
+                    className="absolute left-4 top-4 z-[1100] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-lg hover:bg-slate-100"
+                >
+                    Show search
+                </button>
+            )}
+
             {view === "outdoor" && <div className="pointer-events-none absolute left-4 right-16 top-[67%] lg:left-[380px] lg:top-4 z-[1000] flex flex-col items-end gap-2" aria-live="polite">
                 {picking && <div className="pointer-events-auto rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm text-blue-900 shadow-lg">Click the map to choose your {picking === "from" ? "start" : "destination"}. <button type="button" onClick={() => { pickingRef.current = null; setPicking(null); }} className="ml-3 font-semibold underline">Cancel</button></div>}
                 {crowdSource && <p className={`rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm ${crowdSource === "demo" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-blue-200 bg-blue-50 text-blue-900"}`}>{crowdSource === "demo" ? "SIMULATED DATA · fictional students" : "TIMETABLE ESTIMATES · not live counts"}</p>}
             </div>}
-
 
             {view === "indoor" && indoorRoute.length > 0 && (
                 <section className="absolute inset-0 z-[1200] flex flex-col bg-slate-50" aria-label="LTB indoor route">
