@@ -50,6 +50,10 @@ BUILDINGS_PATH = os.path.join(os.path.dirname(__file__), "buildings.json")
 with open(BUILDINGS_PATH) as f:
     BUILDINGS = json.load(f)
 
+@app.get("/api/buildings")
+def get_buildings():
+    return {"buildings": BUILDINGS}
+
 print(f"Building search data ready: {len(BUILDINGS)} buildings")
 
 # Candidate entrances on the actual LTB footprint, not distant campus junctions.

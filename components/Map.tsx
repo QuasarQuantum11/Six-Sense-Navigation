@@ -216,7 +216,7 @@ export default function Map({
             mapInstance.current = map;
 
             // OUTDOOR MAP: load buildings for the building search.
-            fetch("/api/buildings")
+            fetch(`${API_URL}/api/buildings`)
                 .then((response) => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
