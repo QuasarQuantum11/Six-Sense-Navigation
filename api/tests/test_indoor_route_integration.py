@@ -9,7 +9,9 @@ class IndoorRouteIntegrationTests(unittest.TestCase):
 
         self.assertTrue(result["distance_complete"])
         self.assertEqual(result["vertical_segments"], 0)
-        self.assertTrue(all(node["floor"] == "G" for node in result["route"]))
+        self.assertEqual(result["indoor_path"][0]["id"], "G_N01")
+        self.assertEqual(result["indoor_path"][-1]["id"], "G_N02")
+        self.assertTrue(all(node["floor"] == "G" for node in result["indoor_path"]))
         self.assertGreater(
             result["indoor_horizontal_distance_m"],
             result["map_straight_line_m"],

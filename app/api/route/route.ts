@@ -1,4 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { outdoorRouteInputSchema, privateRouteHeaders } from "@/lib/navigation/route-input";
+import { publicOutdoorGraph } from "@/lib/navigation/public-outdoor";
+import ltbEntrances from "@/api/ltb_entrances.json";
+import campusCentreEntrances from "@/api/campus_centre_entrances.json";
+const ltbSearchEntrance = ltbEntrances.entrances.find((entry) => entry.id === ltbEntrances.building_search_entrance)!;
 import { db } from "@/lib/db/client";
 import {
   navigationEdges,
@@ -39,54 +44,13 @@ type Coordinate = [number, number];
 const BUILDING_MATCH_DISTANCE = 12;
 const MAX_CONNECTOR_DISTANCE = 100;
 
-const BUILDINGS: Record<
-  string,
-  { centre: Coordinate; entrances: Entrance[] }
-> = {
-  campusCentre: {
-    centre: [-37.911786292363466, 145.13297863304618],
-    entrances: [
-      {
-        name: "Entrance 1",
-        latitude: -37.912141,
-        longitude: 145.132779,
-      },
-      {
-        name: "Entrance 2",
-        latitude: -37.912107,
-        longitude: 145.133286,
-      },
-      {
-        name: "Entrance 3",
-        latitude: -37.911555,
-        longitude: 145.132798,
-      },
-      {
-        name: "Entrance 4",
-        latitude: -37.911652,
-        longitude: 145.133254,
-      },
-    ],
-  },
+const BUILDINGS = {
+  campusCentre: campusCentreEntrances,
   ltb: {
-    centre: [-37.913906, 145.1328033],
-    entrances: [
-      {
-        name: "Car Park Entrance",
-        latitude: -37.913908,
-        longitude: 145.132796,
-      },
-      {
-        name: "Bus Loop Entrance",
-        latitude: -37.913662,
-        longitude: 145.132447,
-      },
-      {
-        name: "Campus-facing Entrance",
-        latitude: -37.913393,
-        longitude: 145.132742,
-      },
-    ],
+    centre: [ltbSearchEntrance.latitude, ltbSearchEntrance.longitude] as Coordinate,
+    entrances: ltbEntrances.entrances.map((entry) => ({
+      name: entry.label, latitude: entry.latitude, longitude: entry.longitude,
+    })),
   },
 };
 
@@ -383,12 +347,18 @@ function buildRouteCoordinates(
 ): Coordinate[] {
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const edgeMap = new Map<string, Edge>();
+  const cost = (edge: Edge) => edge.weight != null && edge.weight > 0 ? edge.weight : edge.length;
+  const setEdge = (from: number, to: number, edge: Edge) => {
+    const key = `${from}-${to}`;
+    const previous = edgeMap.get(key);
+    if (!previous || cost(edge) < cost(previous)) edgeMap.set(key, edge);
+  };
 
   for (const edge of edges) {
-    edgeMap.set(`${edge.fromNode}-${edge.toNode}`, edge);
+    setEdge(edge.fromNode, edge.toNode, edge);
 
     if (!edge.oneway) {
-      edgeMap.set(`${edge.toNode}-${edge.fromNode}`, edge);
+      setEdge(edge.toNode, edge.fromNode, edge);
     }
   }
 
@@ -429,19 +399,23 @@ function buildRouteCoordinates(
   );
 }
 
+class RouteError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 async function calculateRoute(
   startLatitude: number,
   startLongitude: number,
   destinationLatitude: number,
   destinationLongitude: number,
 ) {
-  const nodes = (await db.select().from(navigationNodes)) as Node[];
-  const edges = (await db.select().from(navigationEdges)) as Edge[];
+  const [storedNodes, storedEdges] = await Promise.all([
+    db.select().from(navigationNodes), db.select().from(navigationEdges),
+  ]);
+  const { nodes, edges } = publicOutdoorGraph(storedNodes as Node[], storedEdges as Edge[]);
 
   if (nodes.length === 0 || edges.length === 0) {
-    throw new Error(
-      `Navigation database is empty (${nodes.length} nodes, ${edges.length} edges).`,
-    );
+    throw new RouteError("The walking network is unavailable. Please try again later.", 503);
   }
 
   const startEntrances = getEntrances(startLatitude, startLongitude);
@@ -452,6 +426,8 @@ async function calculateRoute(
 
   let bestRoute: Coordinate[] | null = null;
   let bestDistance = Infinity;
+  let startConnected = false;
+  let destinationConnected = false;
 
   for (const start of startEntrances) {
     const startNode = nearestNode(
@@ -461,6 +437,7 @@ async function calculateRoute(
     );
 
     if (!startNode) continue;
+    startConnected = true;
 
     for (const destination of destinationEntrances) {
       const endNode = nearestNode(
@@ -470,12 +447,19 @@ async function calculateRoute(
       );
 
       if (!endNode) continue;
+      destinationConnected = true;
 
       const path = findPath(startNode.id, endNode.id, nodes, edges);
       if (!path) continue;
 
       const route = buildRouteCoordinates(path, nodes, edges);
-      if (route.length < 2) continue;
+      if (route.length === 0) continue;
+      // Include the short, estimated connectors already counted in distance.
+      const startPoint: Coordinate = [start.latitude, start.longitude];
+      const endPoint: Coordinate = [destination.latitude, destination.longitude];
+      if (distanceMeters(...startPoint, ...route[0]) > 0.01) route.unshift(startPoint);
+      if (distanceMeters(...endPoint, ...route[route.length - 1]) > 0.01) route.push(endPoint);
+      if (route.length === 1) route.push([...route[0]]);
 
       const connectorDistance =
         distanceMeters(
@@ -501,9 +485,10 @@ async function calculateRoute(
   }
 
   if (!bestRoute) {
-    throw new Error(
-      `No connected walking path found. Nodes: ${nodes.length}; edges: ${edges.length}. Check whether both locations connect to the navigation graph.`,
-    );
+    if (!startConnected || !destinationConnected) {
+      throw new RouteError("Choose a start and destination within 100 metres of a campus walking path.", 422);
+    }
+    throw new RouteError("No public walking route connects these locations. Please choose another start or destination.", 422);
   }
 
   return {
@@ -556,74 +541,79 @@ async function handleRoute(
   destinationLatitude: number | null,
   destinationLongitude: number | null,
 ) {
-  if (
-    startLatitude === null ||
-    startLongitude === null ||
-    destinationLatitude === null ||
-    destinationLongitude === null
-  ) {
+  const parsed = outdoorRouteInputSchema.safeParse({ startLatitude, startLongitude, destinationLatitude, destinationLongitude });
+  if (!parsed.success) {
     return NextResponse.json(
       {
         error: "Missing or invalid start/destination coordinates.",
       },
-      { status: 400 },
+      { status: 400, headers: privateRouteHeaders },
     );
+  }
+
+  if (startLatitude === destinationLatitude && startLongitude === destinationLongitude) {
+    const point: Coordinate = [parsed.data.startLatitude, parsed.data.startLongitude];
+    return NextResponse.json({ route: [point, point], distanceMeters: 0 }, { headers: privateRouteHeaders });
   }
 
   try {
     const result = await calculateRoute(
-      startLatitude,
-      startLongitude,
-      destinationLatitude,
-      destinationLongitude,
+      parsed.data.startLatitude,
+      parsed.data.startLongitude,
+      parsed.data.destinationLatitude,
+      parsed.data.destinationLongitude,
     );
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: privateRouteHeaders });
   } catch (error) {
-    console.error("Walking route calculation failed:", error);
+    if (!(error instanceof RouteError)) console.error("Walking route calculation failed.");
 
     return NextResponse.json(
       {
         error:
-          error instanceof Error
+          error instanceof RouteError
             ? error.message
-            : "Unknown walking route error.",
+            : "The walking route could not be calculated. Please try again.",
       },
-      { status: 500 },
+      { status: error instanceof RouteError ? error.status : 500, headers: privateRouteHeaders },
     );
   }
 }
 
-export async function GET(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
 
   return handleRoute(
     getCoordinate(params, [
       "startLatitude",
       "startLat",
       "fromLat",
+      "start_lat",
     ]),
     getCoordinate(params, [
       "startLongitude",
       "startLng",
       "fromLng",
+      "start_lon",
     ]),
     getCoordinate(params, [
       "destinationLatitude",
       "destinationLat",
       "endLat",
       "toLat",
+      "end_lat",
     ]),
     getCoordinate(params, [
       "destinationLongitude",
       "destinationLng",
       "endLng",
       "toLng",
+      "end_lon",
     ]),
   );
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
 
@@ -632,36 +622,35 @@ export async function POST(request: NextRequest) {
         "startLatitude",
         "startLat",
         "fromLat",
+        "start_lat",
       ]),
       getBodyCoordinate(body, [
         "startLongitude",
         "startLng",
         "fromLng",
+        "start_lon",
       ]),
       getBodyCoordinate(body, [
         "destinationLatitude",
         "destinationLat",
         "endLat",
         "toLat",
+        "end_lat",
       ]),
       getBodyCoordinate(body, [
         "destinationLongitude",
         "destinationLng",
         "endLng",
         "toLng",
+        "end_lon",
       ]),
     );
-  } catch (error) {
-    console.error("Invalid walking route request:", error);
-
+  } catch {
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Invalid JSON request body.",
+        error: "A JSON route request with valid coordinates is required.",
       },
-      { status: 400 },
+      { status: 400, headers: privateRouteHeaders },
     );
   }
 }

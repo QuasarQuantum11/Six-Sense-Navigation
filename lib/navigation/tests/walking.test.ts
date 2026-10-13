@@ -23,8 +23,8 @@ describe("estimateWalkingMinutes", () => {
   });
 
   it("adjusts for the walking speed preference", () => {
-    // 590 m: ≈ 9.8 min at 1.0 m/s, ≈ 5.5 min at 1.8 m/s.
-    expect(estimateWalkingMinutes(590, "accessible")).toBe(10);
+    // 590 m: 8.85 min at 4 km/h; 5.9 min at 6 km/h, rounded up.
+    expect(estimateWalkingMinutes(590, "accessible")).toBe(9);
     expect(estimateWalkingMinutes(590, "fast")).toBe(6);
   });
 
