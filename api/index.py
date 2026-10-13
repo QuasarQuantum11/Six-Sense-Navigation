@@ -197,12 +197,10 @@ def get_route(
             "error": "The requested navigation data could not be calculated."
         }
 
-
 # Indoor LTB nodes.
 @app.get("/api/indoor-nodes")
 def get_indoor_nodes():
     return LTB_NODES
-
 
 # Direct indoor routing.
 @app.get("/api/indoor-route")
@@ -211,54 +209,43 @@ def get_indoor_route(
     end_node: str,
     walking_speed: str = "normal",
 ):
+    if walking_speed not in {"accessible", "normal", "fast"}:
+        return {"error": "Invalid walking speed preference."}
+
+    if start_node not in LTB_NODES or end_node not in LTB_NODES:
+        return {"error": "Invalid starting or destination location."}
+
+    route_graph = (
+        LTB_ACCESSIBLE_G
+        if walking_speed == "accessible"
+        else LTB_G
+    )
+
     try:
-        if not validate_walking_speed(walking_speed):
-            return {"error": "Invalid walking speed preference."}
-
-        graph = get_indoor_graph(
-            accessible=(walking_speed == "accessible")
-        )
-
-        if start_node not in graph:
-            return {
-                "error": f"Unknown start node or no accessible route: {start_node}"
-            }
-
-        if end_node not in graph:
-            return {
-                "error": f"Unknown end node or no accessible route: {end_node}"
-            }
-
         path = nx.shortest_path(
-            graph, start_node, end_node, weight="weight"
+            route_graph,
+            source=start_node,
+            target=end_node,
+            weight="weight",
         )
 
-        route = []
+        indoor_path = []
         for node_id in path:
-            data = graph.nodes[node_id]
-            route.append({
+            node_data = LTB_NODES[node_id]
+            indoor_path.append({
                 "id": node_id,
-                "floor": data.get("floor"),
-                "type": data.get("type"),
-                "description": data.get("description", ""),
-                "x_pixel": data.get("x_pixel"),
-                "y_pixel": data.get("y_pixel"),
+                **node_data,
             })
 
+        distance_data = measure_indoor_path(route_graph, path)
+
         return {
-            "route": route,
-            **measure_indoor_path(graph, path),
+            "indoor_path": indoor_path,
+            **distance_data,
         }
 
-    except nx.NetworkXNoPath:
-        return {
-            "error": "No route is available for this walking preference."
-        }
-    except Exception:
-        return {
-            "error": "The requested navigation data could not be calculated."
-        }
-
+    except (nx.NetworkXNoPath, nx.NodeNotFound):
+        return {"error": "No indoor route found between these locations."}
 
 # Combined outdoor + indoor LTB routing request.
 class LTBRouteRequest(BaseModel):
