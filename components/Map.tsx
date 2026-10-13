@@ -37,20 +37,38 @@ type WalkingRoute = {
 };
 
 // Fetches a walking route between two points from the Next.js routing API.
-async function fetchWalkingRoute(start: L.LatLng, end: L.LatLng): Promise<WalkingRoute> {
+async function fetchWalkingRoute(
+    start: L.LatLng,
+    destination: L.LatLng
+) {
     const response = await fetch("/api/route", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({ start_lat: start.lat, start_lon: start.lng, end_lat: end.lat, end_lon: end.lng }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            startLatitude: start.lat,
+            startLongitude: start.lng,
+            destinationLatitude: destination.lat,
+            destinationLongitude: destination.lng,
+        }),
     });
+
     const data = await response.json();
-    if (!response.ok || !Array.isArray(data.route) || data.route.length === 0) {
-        throw new Error(data.error ?? `HTTP ${response.status}`);
+
+    if (!response.ok) {
+        throw new Error(
+            data.error || `Route request failed (${response.status})`
+        );
     }
+
+    if (!Array.isArray(data.route) || data.route.length < 2) {
+        throw new Error("The API returned an invalid walking route.");
+    }
+
     return {
         route: data.route,
-        distanceMeters: typeof data.distanceMeters === "number" ? data.distanceMeters : null,
+        distanceMeters: data.distanceMeters,
     };
 }
 
@@ -314,13 +332,25 @@ export default function Map({
         invalidateRoutes();
         pickingRef.current = null;
         setPicking(null);
-        const position: L.LatLngTuple = [building.latitude, building.longitude];
+
+        const buildingName = building.name.toLowerCase();
+        const isLTB =
+            buildingName.includes("ltb") ||
+            buildingName.includes("learning and teaching building");
+
+        const position: L.LatLngTuple = isLTB
+            ? [-37.913901, 145.132517]
+            : [building.latitude, building.longitude];
+
+
         const markerRef = end === "from" ? startMarkerRef : endMarkerRef;
+
         if (markerRef.current) {
             markerRef.current.setLatLng(position);
         } else {
             markerRef.current = L.marker(position).addTo(map);
         }
+
         markerRef.current.bindTooltip(building.name);
 
         if (end === "from") {
@@ -333,11 +363,11 @@ export default function Map({
             setMapEnd(false);
         }
 
-        // A moved pin makes any drawn route out of date.
         routeLayerRef.current?.remove();
         routeLayerRef.current = null;
         setPinRouteDistance(null);
         setPinRouteError("");
+
         panToPoint(map, position);
     };
 
@@ -366,20 +396,35 @@ export default function Map({
         const map = mapInstance.current;
         const start = startMarkerRef.current;
         const end = endMarkerRef.current;
+
         if (!map || !start || !end) return;
 
         const revision = revisionRef.current;
         setPinRouteLoading(true);
         setPinRouteError("");
+
         try {
-            const { route, distanceMeters } = await fetchWalkingRoute(start.getLatLng(), end.getLatLng());
-            if (mapInstance.current !== map || revision !== revisionRef.current) return;
+            const { route, distanceMeters } = await fetchWalkingRoute(
+                start.getLatLng(),
+                end.getLatLng()
+            );
+
+            if (mapInstance.current !== map || revision !== revisionRef.current) {
+                return;
+            }
+
             drawRoute(map, routeLayerRef, route);
             setPinRouteDistance(distanceMeters);
         } catch (error) {
             if (revision !== revisionRef.current) return;
-            setPinRouteError("Could not calculate a walking route between these points.");
-            console.warn("Failed to calculate building route:", error);
+
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : String(error);
+
+            setPinRouteError(message);
+            console.error("Failed to calculate building route:", error);
         } finally {
             setPinRouteLoading(false);
         }
