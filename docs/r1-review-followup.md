@@ -93,6 +93,7 @@ read without modification:
 | Same Campus Centre start/end | 0 m / 0 min; arrival message; no error |
 | Matheson Library → LTB | 318 m / 4 min after unifying LTB candidates |
 | Map-selected point near Campus Centre → Monash IT | 211 m / 3 min; selected-point label; no tunnel |
+| Map-selected point → LTB | 179 m / 3 min; selected-point label; route drawn |
 | Precise map regression point `(-37.91180, 145.13283)` → Monash IT | Live API: 212 m; no tunnel |
 | Campus Centre → LTB G01 (`G_N20`) | Outdoor 370.7 m, indoor 26.6 m, total 397.3 m; west candidate; indoor view opens |
 | Map dragging / zoom controls | Worked without route errors |
@@ -104,6 +105,10 @@ Three warmed live API requests for Matheson → LTB took 98.2, 83.0 and 67.7 ms,
 including the read-only database query. These are local-development timings,
 not a production performance guarantee. The first compiled route request took
 about 1.4 seconds; pre-warm the demonstration environment.
+The Matheson → LTB browser flow also succeeded in three consecutive local
+rehearsals. The PR's automatic Vercel preview build succeeded, but its API
+returned 401 without authentication; preview protection was not bypassed and
+that response is not counted as production route acceptance.
 
 The earlier 343 m / 5 min and 250 m values refer to different pins/entrance
 rules and must not be mixed with this branch's measurements. All distances
