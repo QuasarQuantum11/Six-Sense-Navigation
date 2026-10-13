@@ -7,8 +7,13 @@ export const routeInputSchema = z.object({
   end_lon: z.number().finite().min(-180).max(180),
 });
 
-export const ltbRouteInputSchema = routeInputSchema.pick({ start_lat: true, start_lon: true }).extend({
-  end_node: z.string().regex(/^[A-Za-z0-9_]{1,64}$/),
-});
+export const ltbRouteInputSchema = routeInputSchema
+  .pick({ start_lat: true, start_lon: true })
+  .extend({
+    end_node: z.string().regex(/^[A-Za-z0-9_]{1,64}$/),
+    walking_speed: z.enum(["accessible", "normal", "fast"]).default("normal"),
+  });
 
-export const privateRouteHeaders = { "Cache-Control": "private, no-store" };
+export const privateRouteHeaders = {
+  "Cache-Control": "private, no-store",
+};

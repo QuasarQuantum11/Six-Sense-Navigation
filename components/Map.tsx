@@ -460,12 +460,19 @@ export default function Map({
         setIndoorDistance(null);
 
         try {
+            
             const response = await fetch("/api/ltb-route", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 cache: "no-store",
-                body: JSON.stringify({ start_lat: start.lat, start_lon: start.lng, end_node: destination }),
+                body: JSON.stringify({
+                    start_lat: start.lat,
+                    start_lon: start.lng,
+                    end_node: destination,
+                    walking_speed: walkingSpeed,
+                }),
             });
+
             const data = await response.json();
             if (mapInstance.current !== map || revision !== revisionRef.current) return;
             if (!response.ok || data.error) {
@@ -500,7 +507,7 @@ export default function Map({
             setSelectedFloor(data.indoor_path[0]?.floor || "G");
             setEntranceNode(data.entrance_node || "");
             setEntranceWarning(data.entrance_mapping_verified === false
-                ? `${data.entrance_label ?? "Candidate entrance"}: the indoor/outdoor pairing still needs confirmation. This is a provisional route.`
+                ? `${data.entrance_label ?? "Candidate entrance"}`
                 : "");
             if (
                 typeof data.outdoor_distance_m === "number" &&
