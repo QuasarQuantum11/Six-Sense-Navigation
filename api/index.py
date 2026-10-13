@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 import osmnx as ox
 import networkx as nx
 from api.indoor_distance import measure_indoor_path, routing_weight_pixels
+from api.pedestrian_graph import pedestrian_subgraph
 
 app = FastAPI()
 
@@ -39,8 +40,13 @@ GRAPH_PATH = os.path.join(
     "monash_graph.graphml",
 )
 print("Loading saved Monash graph...")
-G = ox.load_graphml(GRAPH_PATH)
-print("Graph ready.")
+G, PEDESTRIAN_SUMMARY = pedestrian_subgraph(ox.load_graphml(GRAPH_PATH))
+print(
+    "Graph ready: "
+    f"{PEDESTRIAN_SUMMARY['nodes']} nodes, {PEDESTRIAN_SUMMARY['edges']} edges "
+    f"({PEDESTRIAN_SUMMARY['removed_edges']} access=no/private edges and "
+    f"{PEDESTRIAN_SUMMARY['removed_nodes']} unreachable nodes removed)."
+)
 
 # Load LTB indoor navigation data.
 LTB_NODES_PATH = os.path.join(os.path.dirname(__file__), "ltb_nodes.json")

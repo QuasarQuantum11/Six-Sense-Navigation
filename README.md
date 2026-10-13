@@ -161,6 +161,14 @@ for thresholds, expiry, privacy safeguards and acceptance scenarios.
 
 ## Verification
 
+### R1 public outdoor routes
+
+See [R1 review follow-up and acceptance results](docs/r1-review-followup.md)
+for Campus Centre access filtering, input/privacy fixes, the independent
+182-route NetworkX regression, current demo values and deployment steps.
+Regenerate the reference and runtime access snapshot with
+`python scripts/navigation/verify-routes.py` when graph or entrance data change.
+
 ### LTB map connections
 
 `api/ltb_entrances.json` records two candidate doors on OSM building 92's

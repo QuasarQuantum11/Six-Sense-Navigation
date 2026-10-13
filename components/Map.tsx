@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import BuildingSearch from "@/components/map/building-search";
 import type { BuildingLocation } from "@/lib/buildings/search";
+import ltbEntrances from "@/api/ltb_entrances.json";
 import Link from "next/link";
 import LocationControls from "@/components/map/location-controls";
 import CrowdControls from "@/components/map/crowd-controls";
@@ -40,7 +41,7 @@ type WalkingRoute = {
 async function fetchWalkingRoute(
     start: L.LatLng,
     destination: L.LatLng
-) {
+): Promise<WalkingRoute> {
     const response = await fetch("/api/route", {
         method: "POST",
         headers: {
@@ -340,8 +341,9 @@ export default function Map({
             buildingName.includes("ltb") ||
             buildingName.includes("learning and teaching building");
 
+        const searchEntrance = ltbEntrances.entrances.find((entry) => entry.id === ltbEntrances.building_search_entrance)!;
         const position: L.LatLngTuple = isLTB
-            ? [-37.913901, 145.132517]
+            ? [searchEntrance.latitude, searchEntrance.longitude]
             : [building.latitude, building.longitude];
 
 
@@ -779,9 +781,10 @@ export default function Map({
                                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                                     <p className="text-sm font-medium text-blue-900">Estimated walking time</p>
                                     <p className="text-3xl font-bold text-blue-950">
-                                        {formatWalkingTime(estimateWalkingMinutes(pinRouteDistance, walkingSpeed))}
+                                        {formatWalkingTime(pinRouteDistance === 0 ? 0 : estimateWalkingMinutes(pinRouteDistance, walkingSpeed))}
                                     </p>
                                     <p className="text-sm text-blue-900">{formatDistance(pinRouteDistance)} walk</p>
+                                    {pinRouteDistance === 0 && <p className="text-sm text-blue-900">You are already at the destination.</p>}
                                     <p className="mt-1 text-xs text-blue-900">
                                         {personalised ? (
                                             <>

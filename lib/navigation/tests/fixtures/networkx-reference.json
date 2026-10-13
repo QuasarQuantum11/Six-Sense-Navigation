@@ -1,0 +1,924 @@
+{
+  "reference": "NetworkX independent Dijkstra on the real importer output",
+  "networkxVersion": "3.7",
+  "nodes": 1852,
+  "edges": 5402,
+  "sha256": {
+    "components/monash_graph.graphml": "965f1d9693ec8f081bb814aa021115f07735da96154b7fcf659ba5442594b28d",
+    "api/buildings.json": "0375491581c9a2f4d8f322d545d5d740ab48b6a3d8f2681b4e157ba528ce902e",
+    "api/campus_centre_entrances.json": "e16ade0b2a5f505b849240dd433a8e2c5176da52cb619c72ed4a971dc1288609",
+    "api/ltb_entrances.json": "e6a427255af2d8d715ad408a41b45cc9f8b682bc2c18734ea19a2aeaed4a4f56"
+  },
+  "routes": [
+    {
+      "start": "ltb",
+      "end": "campus-centre",
+      "distanceMeters": 223
+    },
+    {
+      "start": "ltb",
+      "end": "menzies",
+      "distanceMeters": 217
+    },
+    {
+      "start": "ltb",
+      "end": "david-derham",
+      "distanceMeters": 113
+    },
+    {
+      "start": "ltb",
+      "end": "biomedical-ltb",
+      "distanceMeters": 287
+    },
+    {
+      "start": "ltb",
+      "end": "woodside",
+      "distanceMeters": 664
+    },
+    {
+      "start": "ltb",
+      "end": "hargrave-andrew",
+      "distanceMeters": 571
+    },
+    {
+      "start": "ltb",
+      "end": "monash-it",
+      "distanceMeters": 428
+    },
+    {
+      "start": "ltb",
+      "end": "engineering",
+      "distanceMeters": 588
+    },
+    {
+      "start": "ltb",
+      "end": "monash-sport",
+      "distanceMeters": 612
+    },
+    {
+      "start": "ltb",
+      "end": "robert-blackwood",
+      "distanceMeters": 388
+    },
+    {
+      "start": "ltb",
+      "end": "chancellery",
+      "distanceMeters": 346
+    },
+    {
+      "start": "ltb",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 318
+    },
+    {
+      "start": "ltb",
+      "end": "religious-centre",
+      "distanceMeters": 355
+    },
+    {
+      "start": "campus-centre",
+      "end": "ltb",
+      "distanceMeters": 223
+    },
+    {
+      "start": "campus-centre",
+      "end": "menzies",
+      "distanceMeters": 73
+    },
+    {
+      "start": "campus-centre",
+      "end": "david-derham",
+      "distanceMeters": 162
+    },
+    {
+      "start": "campus-centre",
+      "end": "biomedical-ltb",
+      "distanceMeters": 356
+    },
+    {
+      "start": "campus-centre",
+      "end": "woodside",
+      "distanceMeters": 461
+    },
+    {
+      "start": "campus-centre",
+      "end": "hargrave-andrew",
+      "distanceMeters": 317
+    },
+    {
+      "start": "campus-centre",
+      "end": "monash-it",
+      "distanceMeters": 186
+    },
+    {
+      "start": "campus-centre",
+      "end": "engineering",
+      "distanceMeters": 377
+    },
+    {
+      "start": "campus-centre",
+      "end": "monash-sport",
+      "distanceMeters": 607
+    },
+    {
+      "start": "campus-centre",
+      "end": "robert-blackwood",
+      "distanceMeters": 326
+    },
+    {
+      "start": "campus-centre",
+      "end": "chancellery",
+      "distanceMeters": 209
+    },
+    {
+      "start": "campus-centre",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 319
+    },
+    {
+      "start": "campus-centre",
+      "end": "religious-centre",
+      "distanceMeters": 217
+    },
+    {
+      "start": "menzies",
+      "end": "ltb",
+      "distanceMeters": 217
+    },
+    {
+      "start": "menzies",
+      "end": "campus-centre",
+      "distanceMeters": 73
+    },
+    {
+      "start": "menzies",
+      "end": "david-derham",
+      "distanceMeters": 157
+    },
+    {
+      "start": "menzies",
+      "end": "biomedical-ltb",
+      "distanceMeters": 386
+    },
+    {
+      "start": "menzies",
+      "end": "woodside",
+      "distanceMeters": 567
+    },
+    {
+      "start": "menzies",
+      "end": "hargrave-andrew",
+      "distanceMeters": 469
+    },
+    {
+      "start": "menzies",
+      "end": "monash-it",
+      "distanceMeters": 332
+    },
+    {
+      "start": "menzies",
+      "end": "engineering",
+      "distanceMeters": 491
+    },
+    {
+      "start": "menzies",
+      "end": "monash-sport",
+      "distanceMeters": 612
+    },
+    {
+      "start": "menzies",
+      "end": "robert-blackwood",
+      "distanceMeters": 330
+    },
+    {
+      "start": "menzies",
+      "end": "chancellery",
+      "distanceMeters": 250
+    },
+    {
+      "start": "menzies",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 309
+    },
+    {
+      "start": "menzies",
+      "end": "religious-centre",
+      "distanceMeters": 258
+    },
+    {
+      "start": "david-derham",
+      "end": "ltb",
+      "distanceMeters": 113
+    },
+    {
+      "start": "david-derham",
+      "end": "campus-centre",
+      "distanceMeters": 162
+    },
+    {
+      "start": "david-derham",
+      "end": "menzies",
+      "distanceMeters": 157
+    },
+    {
+      "start": "david-derham",
+      "end": "biomedical-ltb",
+      "distanceMeters": 316
+    },
+    {
+      "start": "david-derham",
+      "end": "woodside",
+      "distanceMeters": 655
+    },
+    {
+      "start": "david-derham",
+      "end": "hargrave-andrew",
+      "distanceMeters": 510
+    },
+    {
+      "start": "david-derham",
+      "end": "monash-it",
+      "distanceMeters": 420
+    },
+    {
+      "start": "david-derham",
+      "end": "engineering",
+      "distanceMeters": 580
+    },
+    {
+      "start": "david-derham",
+      "end": "monash-sport",
+      "distanceMeters": 690
+    },
+    {
+      "start": "david-derham",
+      "end": "robert-blackwood",
+      "distanceMeters": 409
+    },
+    {
+      "start": "david-derham",
+      "end": "chancellery",
+      "distanceMeters": 338
+    },
+    {
+      "start": "david-derham",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 354
+    },
+    {
+      "start": "david-derham",
+      "end": "religious-centre",
+      "distanceMeters": 346
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "ltb",
+      "distanceMeters": 287
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "campus-centre",
+      "distanceMeters": 356
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "menzies",
+      "distanceMeters": 386
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "david-derham",
+      "distanceMeters": 316
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "woodside",
+      "distanceMeters": 856
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "hargrave-andrew",
+      "distanceMeters": 602
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "monash-it",
+      "distanceMeters": 591
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "engineering",
+      "distanceMeters": 772
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "monash-sport",
+      "distanceMeters": 922
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "robert-blackwood",
+      "distanceMeters": 641
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "chancellery",
+      "distanceMeters": 556
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 586
+    },
+    {
+      "start": "biomedical-ltb",
+      "end": "religious-centre",
+      "distanceMeters": 565
+    },
+    {
+      "start": "woodside",
+      "end": "ltb",
+      "distanceMeters": 664
+    },
+    {
+      "start": "woodside",
+      "end": "campus-centre",
+      "distanceMeters": 461
+    },
+    {
+      "start": "woodside",
+      "end": "menzies",
+      "distanceMeters": 567
+    },
+    {
+      "start": "woodside",
+      "end": "david-derham",
+      "distanceMeters": 655
+    },
+    {
+      "start": "woodside",
+      "end": "biomedical-ltb",
+      "distanceMeters": 856
+    },
+    {
+      "start": "woodside",
+      "end": "hargrave-andrew",
+      "distanceMeters": 543
+    },
+    {
+      "start": "woodside",
+      "end": "monash-it",
+      "distanceMeters": 300
+    },
+    {
+      "start": "woodside",
+      "end": "engineering",
+      "distanceMeters": 230
+    },
+    {
+      "start": "woodside",
+      "end": "monash-sport",
+      "distanceMeters": 638
+    },
+    {
+      "start": "woodside",
+      "end": "robert-blackwood",
+      "distanceMeters": 547
+    },
+    {
+      "start": "woodside",
+      "end": "chancellery",
+      "distanceMeters": 512
+    },
+    {
+      "start": "woodside",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 650
+    },
+    {
+      "start": "woodside",
+      "end": "religious-centre",
+      "distanceMeters": 391
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "ltb",
+      "distanceMeters": 571
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "campus-centre",
+      "distanceMeters": 317
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "menzies",
+      "distanceMeters": 469
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "david-derham",
+      "distanceMeters": 510
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "biomedical-ltb",
+      "distanceMeters": 602
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "woodside",
+      "distanceMeters": 543
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "monash-it",
+      "distanceMeters": 365
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "engineering",
+      "distanceMeters": 459
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "monash-sport",
+      "distanceMeters": 964
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "robert-blackwood",
+      "distanceMeters": 729
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "chancellery",
+      "distanceMeters": 589
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 722
+    },
+    {
+      "start": "hargrave-andrew",
+      "end": "religious-centre",
+      "distanceMeters": 468
+    },
+    {
+      "start": "monash-it",
+      "end": "ltb",
+      "distanceMeters": 428
+    },
+    {
+      "start": "monash-it",
+      "end": "campus-centre",
+      "distanceMeters": 186
+    },
+    {
+      "start": "monash-it",
+      "end": "menzies",
+      "distanceMeters": 332
+    },
+    {
+      "start": "monash-it",
+      "end": "david-derham",
+      "distanceMeters": 420
+    },
+    {
+      "start": "monash-it",
+      "end": "biomedical-ltb",
+      "distanceMeters": 591
+    },
+    {
+      "start": "monash-it",
+      "end": "woodside",
+      "distanceMeters": 300
+    },
+    {
+      "start": "monash-it",
+      "end": "hargrave-andrew",
+      "distanceMeters": 365
+    },
+    {
+      "start": "monash-it",
+      "end": "engineering",
+      "distanceMeters": 216
+    },
+    {
+      "start": "monash-it",
+      "end": "monash-sport",
+      "distanceMeters": 647
+    },
+    {
+      "start": "monash-it",
+      "end": "robert-blackwood",
+      "distanceMeters": 425
+    },
+    {
+      "start": "monash-it",
+      "end": "chancellery",
+      "distanceMeters": 277
+    },
+    {
+      "start": "monash-it",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 418
+    },
+    {
+      "start": "monash-it",
+      "end": "religious-centre",
+      "distanceMeters": 156
+    },
+    {
+      "start": "engineering",
+      "end": "ltb",
+      "distanceMeters": 588
+    },
+    {
+      "start": "engineering",
+      "end": "campus-centre",
+      "distanceMeters": 377
+    },
+    {
+      "start": "engineering",
+      "end": "menzies",
+      "distanceMeters": 491
+    },
+    {
+      "start": "engineering",
+      "end": "david-derham",
+      "distanceMeters": 580
+    },
+    {
+      "start": "engineering",
+      "end": "biomedical-ltb",
+      "distanceMeters": 772
+    },
+    {
+      "start": "engineering",
+      "end": "woodside",
+      "distanceMeters": 230
+    },
+    {
+      "start": "engineering",
+      "end": "hargrave-andrew",
+      "distanceMeters": 459
+    },
+    {
+      "start": "engineering",
+      "end": "monash-it",
+      "distanceMeters": 216
+    },
+    {
+      "start": "engineering",
+      "end": "monash-sport",
+      "distanceMeters": 700
+    },
+    {
+      "start": "engineering",
+      "end": "robert-blackwood",
+      "distanceMeters": 584
+    },
+    {
+      "start": "engineering",
+      "end": "chancellery",
+      "distanceMeters": 436
+    },
+    {
+      "start": "engineering",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 577
+    },
+    {
+      "start": "engineering",
+      "end": "religious-centre",
+      "distanceMeters": 316
+    },
+    {
+      "start": "monash-sport",
+      "end": "ltb",
+      "distanceMeters": 612
+    },
+    {
+      "start": "monash-sport",
+      "end": "campus-centre",
+      "distanceMeters": 607
+    },
+    {
+      "start": "monash-sport",
+      "end": "menzies",
+      "distanceMeters": 612
+    },
+    {
+      "start": "monash-sport",
+      "end": "david-derham",
+      "distanceMeters": 690
+    },
+    {
+      "start": "monash-sport",
+      "end": "biomedical-ltb",
+      "distanceMeters": 922
+    },
+    {
+      "start": "monash-sport",
+      "end": "woodside",
+      "distanceMeters": 638
+    },
+    {
+      "start": "monash-sport",
+      "end": "hargrave-andrew",
+      "distanceMeters": 964
+    },
+    {
+      "start": "monash-sport",
+      "end": "monash-it",
+      "distanceMeters": 647
+    },
+    {
+      "start": "monash-sport",
+      "end": "engineering",
+      "distanceMeters": 700
+    },
+    {
+      "start": "monash-sport",
+      "end": "robert-blackwood",
+      "distanceMeters": 361
+    },
+    {
+      "start": "monash-sport",
+      "end": "chancellery",
+      "distanceMeters": 473
+    },
+    {
+      "start": "monash-sport",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 437
+    },
+    {
+      "start": "monash-sport",
+      "end": "religious-centre",
+      "distanceMeters": 599
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "ltb",
+      "distanceMeters": 388
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "campus-centre",
+      "distanceMeters": 326
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "menzies",
+      "distanceMeters": 330
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "david-derham",
+      "distanceMeters": 409
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "biomedical-ltb",
+      "distanceMeters": 641
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "woodside",
+      "distanceMeters": 547
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "hargrave-andrew",
+      "distanceMeters": 729
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "monash-it",
+      "distanceMeters": 425
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "engineering",
+      "distanceMeters": 584
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "monash-sport",
+      "distanceMeters": 361
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "chancellery",
+      "distanceMeters": 191
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 176
+    },
+    {
+      "start": "robert-blackwood",
+      "end": "religious-centre",
+      "distanceMeters": 318
+    },
+    {
+      "start": "chancellery",
+      "end": "ltb",
+      "distanceMeters": 346
+    },
+    {
+      "start": "chancellery",
+      "end": "campus-centre",
+      "distanceMeters": 209
+    },
+    {
+      "start": "chancellery",
+      "end": "menzies",
+      "distanceMeters": 250
+    },
+    {
+      "start": "chancellery",
+      "end": "david-derham",
+      "distanceMeters": 338
+    },
+    {
+      "start": "chancellery",
+      "end": "biomedical-ltb",
+      "distanceMeters": 556
+    },
+    {
+      "start": "chancellery",
+      "end": "woodside",
+      "distanceMeters": 512
+    },
+    {
+      "start": "chancellery",
+      "end": "hargrave-andrew",
+      "distanceMeters": 589
+    },
+    {
+      "start": "chancellery",
+      "end": "monash-it",
+      "distanceMeters": 277
+    },
+    {
+      "start": "chancellery",
+      "end": "engineering",
+      "distanceMeters": 436
+    },
+    {
+      "start": "chancellery",
+      "end": "monash-sport",
+      "distanceMeters": 473
+    },
+    {
+      "start": "chancellery",
+      "end": "robert-blackwood",
+      "distanceMeters": 191
+    },
+    {
+      "start": "chancellery",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 184
+    },
+    {
+      "start": "chancellery",
+      "end": "religious-centre",
+      "distanceMeters": 170
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "ltb",
+      "distanceMeters": 318
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "campus-centre",
+      "distanceMeters": 319
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "menzies",
+      "distanceMeters": 309
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "david-derham",
+      "distanceMeters": 354
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "biomedical-ltb",
+      "distanceMeters": 586
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "woodside",
+      "distanceMeters": 650
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "hargrave-andrew",
+      "distanceMeters": 722
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "monash-it",
+      "distanceMeters": 418
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "engineering",
+      "distanceMeters": 577
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "monash-sport",
+      "distanceMeters": 437
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "robert-blackwood",
+      "distanceMeters": 176
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "chancellery",
+      "distanceMeters": 184
+    },
+    {
+      "start": "sir-louis-matheson",
+      "end": "religious-centre",
+      "distanceMeters": 311
+    },
+    {
+      "start": "religious-centre",
+      "end": "ltb",
+      "distanceMeters": 355
+    },
+    {
+      "start": "religious-centre",
+      "end": "campus-centre",
+      "distanceMeters": 217
+    },
+    {
+      "start": "religious-centre",
+      "end": "menzies",
+      "distanceMeters": 258
+    },
+    {
+      "start": "religious-centre",
+      "end": "david-derham",
+      "distanceMeters": 346
+    },
+    {
+      "start": "religious-centre",
+      "end": "biomedical-ltb",
+      "distanceMeters": 565
+    },
+    {
+      "start": "religious-centre",
+      "end": "woodside",
+      "distanceMeters": 391
+    },
+    {
+      "start": "religious-centre",
+      "end": "hargrave-andrew",
+      "distanceMeters": 468
+    },
+    {
+      "start": "religious-centre",
+      "end": "monash-it",
+      "distanceMeters": 156
+    },
+    {
+      "start": "religious-centre",
+      "end": "engineering",
+      "distanceMeters": 316
+    },
+    {
+      "start": "religious-centre",
+      "end": "monash-sport",
+      "distanceMeters": 599
+    },
+    {
+      "start": "religious-centre",
+      "end": "robert-blackwood",
+      "distanceMeters": 318
+    },
+    {
+      "start": "religious-centre",
+      "end": "chancellery",
+      "distanceMeters": 170
+    },
+    {
+      "start": "religious-centre",
+      "end": "sir-louis-matheson",
+      "distanceMeters": 311
+    }
+  ]
+}

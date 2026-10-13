@@ -7,6 +7,13 @@ export const routeInputSchema = z.object({
   end_lon: z.number().finite().min(-180).max(180),
 });
 
+export const outdoorRouteInputSchema = z.object({
+  startLatitude: z.number().finite().min(-90).max(90),
+  startLongitude: z.number().finite().min(-180).max(180),
+  destinationLatitude: z.number().finite().min(-90).max(90),
+  destinationLongitude: z.number().finite().min(-180).max(180),
+});
+
 export const ltbRouteInputSchema = routeInputSchema
   .pick({ start_lat: true, start_lon: true })
   .extend({

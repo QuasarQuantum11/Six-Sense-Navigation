@@ -1,3 +1,5 @@
+// Standalone graph helper. Production outdoor routing uses app/api/route/route.ts;
+// its real-campus validation is in tests/campus-integration.test.ts.
 import { calculateRouteDistance } from "./distance";
 import type {
   NavigationGraph,
