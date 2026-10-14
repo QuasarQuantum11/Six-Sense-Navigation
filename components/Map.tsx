@@ -606,14 +606,83 @@ export default function Map({
         }
     };
 
+    /**
+     * Smooths the visual route with quadratic curves.
+     * The actual navigation nodes and routing graph remain unchanged.
+     */
+    const smoothIndoorRoute = (
+        nodes: IndoorRouteNode[],
+        cornerCut = 18
+    ): string => {
+        if (nodes.length < 3) {
+            return nodes
+                .map((node) => `${node.x_pixel},${node.y_pixel}`)
+                .join(" ");
+        }
+
+        const points = nodes.map((node) => ({
+            x: node.x_pixel,
+            y: node.y_pixel,
+        }));
+
+        const first = points[0];
+        const last = points[points.length - 1];
+
+        let path = `M ${first.x} ${first.y}`;
+
+        for (let i = 1; i < points.length - 1; i++) {
+            const previous = points[i - 1];
+            const current = points[i];
+            const next = points[i + 1];
+
+            const incomingLength = Math.hypot(
+                current.x - previous.x,
+                current.y - previous.y
+            );
+            const outgoingLength = Math.hypot(
+                next.x - current.x,
+                next.y - current.y
+            );
+
+            // Avoid unstable corners when nodes are extremely close.
+            const cut = Math.min(
+                cornerCut,
+                incomingLength / 2,
+                outgoingLength / 2
+            );
+
+            if (incomingLength === 0 || outgoingLength === 0) {
+                path += ` L ${current.x} ${current.y}`;
+                continue;
+            }
+
+            const before = {
+                x: current.x + (previous.x - current.x) * cut / incomingLength,
+                y: current.y + (previous.y - current.y) * cut / incomingLength,
+            };
+
+            const after = {
+                x: current.x + (next.x - current.x) * cut / outgoingLength,
+                y: current.y + (next.y - current.y) * cut / outgoingLength,
+            };
+
+            path += ` L ${before.x} ${before.y}`;
+            path += ` Q ${current.x} ${current.y} ${after.x} ${after.y}`;
+        }
+
+        path += ` L ${last.x} ${last.y}`;
+
+        return path;
+};
+
+
     // INDOOR MAP: keep only the route points for the selected floor plan.
     const floorRoute = indoorRoute.filter(
         (node) => node.floor === selectedFloor
     );
 
-    const routePoints = floorRoute
-        .map((node) => `${node.x_pixel},${node.y_pixel}`)
-        .join(" ");
+    const routePath = smoothIndoorRoute(floorRoute, 18);
+
     const totalRouteDistance = indoorDistance?.total_estimated_distance_m ??
         (indoorDistance?.vertical_segments === 0 ? indoorDistance.total_known_distance_m : null);
 
@@ -938,7 +1007,7 @@ export default function Map({
                         <svg viewBox="0 0 1722 1188" role="img" aria-label={`LTB floor ${selectedFloor} plan and indoor route`} className="mx-auto block h-auto w-full max-w-[1400px] bg-white shadow-md">
                             <image href={floorPlans[selectedFloor]} x="0" y="0" width="1722" height="1188" />
                             {floorRoute.length > 1 && (
-                                <polyline points={routePoints} fill="none" stroke="#1d4ed8" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d={routePath} fill="none" stroke="#1d4ed8" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
                             )}
                             {floorRoute.map((node) => (
                                 <circle key={node.id} cx={node.x_pixel} cy={node.y_pixel} r="10" fill="#1d4ed8" />
