@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/client";
+import { getWheelchairRouteCost, isWheelchairAccessibleEdge, } from "@/lib/navigation/accessibility";
 import { navigationEdges, navigationNodes } from "@/lib/navigation/schema";
 
 type Node = typeof navigationNodes.$inferSelect;
@@ -12,11 +13,18 @@ function nearestNode(nodes: Node[], latitude: number, longitude: number): Node |
       (nearest.latitude - latitude) ** 2 + (nearest.longitude - longitude) ** 2;
     const nodeDistance =
       (node.latitude - latitude) ** 2 + (node.longitude - longitude) ** 2;
+
     return nodeDistance < nearestDistance ? node : nearest;
   }, null);
 }
 
-function findPath(nodes: Node[], edges: Edge[], startId: number, destinationId: number): number[] | null {
+function findPath(
+  nodes: Node[],
+  edges: Edge[],
+  startId: number,
+  destinationId: number,
+  profile: "standard" | "wheelchair" = "standard",
+): number[] | null {
   const distances = new Map(nodes.map((node) => [node.id, Infinity]));
   const previous = new Map<number, number>();
   const unvisited = new Set(nodes.map((node) => node.id));
@@ -36,7 +44,27 @@ function findPath(nodes: Node[], edges: Edge[], startId: number, destinationId: 
 
     for (const edge of edges) {
       if (edge.fromNode !== currentId || !unvisited.has(edge.toNode)) continue;
-      const candidate = (distances.get(currentId) ?? Infinity) + (edge.weight ?? edge.length);
+
+      const edgeAccessibility = {
+        highway: edge.highway,
+        wheelchairAccessible: edge.wheelchairAccessible,
+        hasSteps: edge.hasSteps,
+      };
+
+      if (profile === "wheelchair" && !isWheelchairAccessibleEdge(edgeAccessibility)) {
+        continue;
+      }
+
+      const baseDistance = edge.weight ?? edge.length;
+      const routeCost = profile === "wheelchair"
+        ? getWheelchairRouteCost(edgeAccessibility, baseDistance)
+        : baseDistance;
+
+      if (!Number.isFinite(routeCost)) {
+        continue;
+      }
+
+      const candidate = (distances.get(currentId) ?? Infinity) + routeCost;
       if (candidate < (distances.get(edge.toNode) ?? Infinity)) {
         distances.set(edge.toNode, candidate);
         previous.set(edge.toNode, currentId);
@@ -51,6 +79,7 @@ function findPath(nodes: Node[], edges: Edge[], startId: number, destinationId: 
     path.push(currentId);
     if (currentId === startId) return path.reverse();
   }
+
   return null;
 }
 
@@ -59,6 +88,7 @@ export async function GET(request: Request) {
   const values = ["start_lat", "start_lon", "end_lat", "end_lon"].map((key) =>
     Number(params.get(key)),
   );
+  const profile = params.get("profile") === "wheelchair" ? "wheelchair" : "standard";
 
   if (values.some((value) => !Number.isFinite(value))) {
     return Response.json(
@@ -72,6 +102,7 @@ export async function GET(request: Request) {
       db.select().from(navigationNodes),
       db.select().from(navigationEdges),
     ]);
+
     const [startLatitude, startLongitude, endLatitude, endLongitude] = values;
     const start = nearestNode(nodes, startLatitude, startLongitude);
     const destination = nearestNode(nodes, endLatitude, endLongitude);
@@ -80,8 +111,13 @@ export async function GET(request: Request) {
       return Response.json({ error: "The navigation graph is empty." }, { status: 503 });
     }
 
-    const nodeIds = findPath(nodes, edges, start.id, destination.id);
-    if (!nodeIds) return Response.json({ error: "No route was found." }, { status: 404 });
+    const nodeIds = findPath(nodes, edges, start.id, destination.id, profile);
+    if (!nodeIds) {
+      const message = profile === "wheelchair"
+        ? "No wheelchair-accessible outdoor route was found."
+        : "No route was found.";
+      return Response.json({ error: message }, { status: 404 });
+    }
 
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
     const route = nodeIds.flatMap((nodeId) => {
