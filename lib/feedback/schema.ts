@@ -10,6 +10,7 @@ import { students } from "@/lib/students/schema";
 
 export const feedbackStatus = pgEnum("feedback_status", [
   "new",
+  "not_reviewed",
   "in_review",
   "resolved",
   "dismissed",

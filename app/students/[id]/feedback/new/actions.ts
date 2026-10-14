@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { feedback } from "@/lib/feedback/schema";
+import { requireStudentOrAdmin } from "@/lib/auth/dal";
 
 export async function submitFeedback(studentId: string, formData: FormData) {
+  await requireStudentOrAdmin(studentId);
   const message = formData.get("message");
   if (typeof message !== "string" || !message.trim()) {
     throw new Error("Feedback message cannot be empty.");

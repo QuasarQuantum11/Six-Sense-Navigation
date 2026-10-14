@@ -1,6 +1,7 @@
 import argparse
 import ast
 import os
+import sys
 from pathlib import Path
 
 import networkx as nx
@@ -9,6 +10,9 @@ from psycopg2.extras import execute_values
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from api.pedestrian_graph import pedestrian_subgraph  # noqa: E402
 DEFAULT_GRAPH_PATH = ROOT / "components" / "monash_graph.graphml"
 
 
@@ -73,7 +77,11 @@ def linestring_for_edge(graph, from_id, to_id, attributes):
 
 
 def read_graph(path: Path):
-    graph = nx.read_graphml(path)
+    graph, summary = pedestrian_subgraph(nx.read_graphml(path))
+    print(
+        f"Removed {summary['removed_edges']} access=no/private edges and "
+        f"{summary['removed_nodes']} unreachable nodes."
+    )
     nodes = []
     edges = []
 
@@ -163,7 +171,7 @@ def main():
 
     load_env_file(ROOT / ".env.local")
     database_url = os.getenv("DATABASE_URL")
-    if not database_url:
+    if args.apply and not database_url:
         raise RuntimeError("DATABASE_URL is not set in .env.local or the environment.")
 
     nodes, edges = read_graph(args.graph)

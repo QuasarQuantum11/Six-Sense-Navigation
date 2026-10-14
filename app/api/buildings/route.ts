@@ -23,8 +23,8 @@ export async function GET() {
     return Response.json({
       buildings: locatedBuildings as BuildingLocation[],
     });
-  } catch (error) {
-    console.error("Failed to load buildings:", error);
+  } catch {
+    console.error("Failed to load buildings:");
     return Response.json(
       { error: "Buildings could not be loaded." },
       { status: 500 },

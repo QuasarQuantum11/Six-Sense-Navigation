@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { updateProfile } from "@/app/profile-actions";
-
-type WalkingSpeed = "accessible" | "normal" | "fast";
+import { walkingPaceKmh, type WalkingSpeed } from "@/lib/navigation/walking";
 
 export default function ProfileForm({
   username: initialUsername,
@@ -127,13 +126,18 @@ export default function ProfileForm({
               }
               className="w-full rounded-md border border-primary/20 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
             >
-              <option value="accessible">Accessible</option>
-              <option value="normal">Normal</option>
-              <option value="fast">Fast</option>
+              <option value="accessible">
+                Accessible (about {walkingPaceKmh("accessible")} km/h)
+              </option>
+              <option value="normal">
+                Normal (about {walkingPaceKmh("normal")} km/h)
+              </option>
+              <option value="fast">
+                Fast (about {walkingPaceKmh("fast")} km/h)
+              </option>
             </select>
             <p className="mt-1 text-xs text-muted">
-              This preference can be used to personalise your navigation
-              routes.
+              Used to estimate your walking time for routes on the map.
             </p>
           </div>
 

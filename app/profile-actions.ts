@@ -1,16 +1,18 @@
 "use server";
 
-import { eq, or } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { students } from "@/lib/students/schema";
 import { hashPassword } from "@/lib/auth/password";
 import { verifySession } from "@/lib/auth/dal";
+import { profileUpdateSchema } from "@/lib/auth/validation";
+import type { WalkingSpeed } from "@/lib/navigation/walking";
 
 export async function updateProfile(
   username: string,
   email: string,
-  walkingSpeed: "accessible" | "normal" | "fast",
+  walkingSpeed: WalkingSpeed,
   password?: string,
 ) {
   const session = await verifySession();
@@ -19,43 +21,47 @@ export async function updateProfile(
     throw new Error("Only student profiles can be edited.");
   }
 
-  const trimmedUsername = username.trim();
-  const trimmedEmail = email.trim().toLowerCase();
-
-  if (!trimmedUsername || !trimmedEmail) {
-    throw new Error("Username and email cannot be empty.");
+  // Server actions can be called directly, so don't trust the form's value.
+  const parsed = profileUpdateSchema.safeParse({ username, email, walkingSpeed, password });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0].message);
   }
+
+  const input = parsed.data;
 
   const existing = await db
     .select({ id: students.id })
     .from(students)
     .where(
-      or(
-        eq(students.username, trimmedUsername),
-        eq(students.email, trimmedEmail),
+      and(
+        ne(students.id, session.userId),
+        or(
+          eq(students.username, input.username),
+          eq(students.email, input.email),
+        ),
       ),
     )
     .limit(1);
 
-  if (existing.length > 0 && existing[0].id !== session.userId) {
+  if (existing.length > 0) {
     throw new Error("That username or email is already in use.");
   }
 
   const values: {
     username: string;
     email: string;
-    walkingSpeed: "accessible" | "normal" | "fast";
+    walkingSpeed: WalkingSpeed;
     updatedAt: Date;
     passwordHash?: string;
   } = {
-    username: trimmedUsername,
-    email: trimmedEmail,
-    walkingSpeed,
+    username: input.username,
+    email: input.email,
+    walkingSpeed: input.walkingSpeed,
     updatedAt: new Date(),
   };
 
-  if (password?.trim()) {
-    values.passwordHash = await hashPassword(password.trim());
+  if (input.password) {
+    values.passwordHash = await hashPassword(input.password);
   }
 
   await db

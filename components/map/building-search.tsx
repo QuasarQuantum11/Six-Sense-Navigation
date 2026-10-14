@@ -4,18 +4,27 @@ import { useEffect, useId, useState } from "react";
 import { searchBuildings, type BuildingLocation } from "@/lib/buildings/search";
 
 // Accessible building search box (WAI-ARIA combobox with a listbox popup).
+// To clear it from outside, remount it with a new `key`.
 export default function BuildingSearch({
+    label,
+    placeholder,
     buildings,
-    error,
     onSelect,
+    onClear,
+    selectedLabel,
 }: {
+    selectedLabel?: string;
+    label: string;
+    placeholder: string;
     buildings: BuildingLocation[];
-    error: string;
     onSelect: (building: BuildingLocation) => void;
+    // Called when the user edits or clears a building they had chosen.
+    onClear?: () => void;
 }) {
     const [query, setQuery] = useState("");
     const [open, setOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
+    const [hasSelection, setHasSelection] = useState(false);
     const id = useId();
     const listId = `${id}-results`;
     const optionId = (index: number) => `${id}-option-${index}`;
@@ -32,7 +41,14 @@ export default function BuildingSearch({
         setQuery(building.name);
         setOpen(false);
         setActiveIndex(-1);
+        setHasSelection(true);
         onSelect(building);
+    }
+
+    function clearSelection() {
+        if (!hasSelection) return;
+        setHasSelection(false);
+        onClear?.();
     }
 
     function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -63,6 +79,8 @@ export default function BuildingSearch({
                     setActiveIndex(-1);
                 } else {
                     setQuery("");
+                    if (selectedLabel) onClear?.();
+                    clearSelection();
                 }
                 break;
         }
@@ -77,7 +95,7 @@ export default function BuildingSearch({
     return (
         <div>
             <label className="block text-sm font-medium text-slate-800" htmlFor={`${id}-input`}>
-                Find a building
+                {label}
             </label>
             <div className="relative mt-1">
                 <input
@@ -89,12 +107,14 @@ export default function BuildingSearch({
                     aria-controls={listId}
                     aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
                     autoComplete="off"
-                    placeholder="e.g. Library"
-                    value={query}
+                    placeholder={placeholder}
+                    value={query || (!hasSelection ? selectedLabel ?? "" : "")}
                     onChange={(event) => {
                         setQuery(event.target.value);
                         setOpen(true);
                         setActiveIndex(-1);
+                        if (selectedLabel) onClear?.();
+                        clearSelection();
                     }}
                     onFocus={() => setOpen(true)}
                     onBlur={() => {
@@ -107,7 +127,7 @@ export default function BuildingSearch({
                 <ul
                     id={listId}
                     role="listbox"
-                    aria-label="Buildings"
+                    aria-label={`${label} buildings`}
                     hidden={!open || results.length === 0}
                     className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-auto rounded-md border border-slate-300 bg-white py-1 shadow-lg"
                 >
@@ -136,7 +156,6 @@ export default function BuildingSearch({
             {open && results.length === 0 && buildings.length > 0 && (
                 <p className="mt-2 text-sm text-slate-600">No buildings match &ldquo;{query.trim()}&rdquo;.</p>
             )}
-            {error && <p className="mt-2 text-sm text-red-700" role="alert">{error}</p>}
         </div>
     );
 }

@@ -1,0 +1,30 @@
+{
+  "centre": [
+    -37.911786292363466,
+    145.13297863304618
+  ],
+  "mapping_verified": false,
+  "source": "Team-provided coordinates introduced in main commits 3e045a9 / 2b78bb1; physical entrances have not been independently verified.",
+  "entrances": [
+    {
+      "name": "Entrance 1",
+      "latitude": -37.912141,
+      "longitude": 145.132779
+    },
+    {
+      "name": "Entrance 2",
+      "latitude": -37.912107,
+      "longitude": 145.133286
+    },
+    {
+      "name": "Entrance 3",
+      "latitude": -37.911555,
+      "longitude": 145.132798
+    },
+    {
+      "name": "Entrance 4",
+      "latitude": -37.911652,
+      "longitude": 145.133254
+    }
+  ]
+}

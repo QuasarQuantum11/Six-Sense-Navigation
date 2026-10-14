@@ -1,6 +1,7 @@
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { navigationEdges, navigationNodes } from "@/lib/navigation/schema";
+import { publicOutdoorGraph } from "@/lib/navigation/public-outdoor";
 
 type Coordinate = [number, number];
 
@@ -22,10 +23,11 @@ function parseGeometry(geometry: string | null): Coordinate[] | null {
 
 export async function GET() {
   try {
-    const [nodes, edges] = await Promise.all([
+    const [storedNodes, storedEdges] = await Promise.all([
       db.select().from(navigationNodes),
       db.select().from(navigationEdges).orderBy(asc(navigationEdges.id)),
     ]);
+    const { nodes, edges } = publicOutdoorGraph(storedNodes, storedEdges);
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
     const result = edges.flatMap((edge) => {
@@ -42,8 +44,8 @@ export async function GET() {
     });
 
     return Response.json({ edges: result, nodeCount: nodes.length });
-  } catch (error) {
-    console.error("Failed to load navigation graph:", error);
+  } catch {
+    console.error("Failed to load navigation graph:");
     return Response.json(
       { error: "The navigation graph could not be loaded." },
       { status: 500 },

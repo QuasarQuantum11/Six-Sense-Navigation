@@ -1,10 +1,97 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import BuildingSearch from "@/components/map/building-search";
 import type { BuildingLocation } from "@/lib/buildings/search";
+import ltbEntrances from "@/api/ltb_entrances.json";
+import Link from "next/link";
+import LocationControls from "@/components/map/location-controls";
+import CrowdControls from "@/components/map/crowd-controls";
+import { type CurrentLocation } from "@/lib/navigation/geolocation";
+import {
+    estimateWalkingMinutes,
+    formatDistance,
+    formatWalkingTime,
+    walkingPaceKmh,
+    type WalkingSpeed,
+} from "@/lib/navigation/walking";
+
+// Leaflet looks for its default pin images at a path that doesn't exist once
+// bundled, so point every marker at copies in public/leaflet/.
+L.Marker.prototype.options.icon = L.icon({
+    iconUrl: "/leaflet/marker-icon.png",
+    iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+    shadowUrl: "/leaflet/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    tooltipAnchor: [16, -28],
+    shadowSize: [41, 41],
+});
+
+type WalkingRoute = {
+    route: L.LatLngTuple[];
+    // Missing if the API couldn't measure the route.
+    distanceMeters: number | null;
+};
+
+// Fetches a walking route between two points from the Next.js routing API.
+async function fetchWalkingRoute(
+    start: L.LatLng,
+    destination: L.LatLng
+): Promise<WalkingRoute> {
+    const response = await fetch("/api/route", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            startLatitude: start.lat,
+            startLongitude: start.lng,
+            destinationLatitude: destination.lat,
+            destinationLongitude: destination.lng,
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            data.error || `Route request failed (${response.status})`
+        );
+    }
+
+    if (!Array.isArray(data.route) || data.route.length < 2) {
+        throw new Error("The API returned an invalid walking route.");
+    }
+
+    return {
+        route: data.route,
+        distanceMeters: data.distanceMeters,
+    };
+}
+
+// Replaces any route already drawn with a new one and fits the map to it.
+function drawRoute(
+    map: L.Map,
+    routeLayerRef: { current: L.Polyline | null },
+    route: L.LatLngTuple[]
+) {
+    routeLayerRef.current?.remove();
+    routeLayerRef.current = L.polyline(route, { color: "blue", weight: 5 }).addTo(map);
+    map.fitBounds(routeLayerRef.current.getBounds(), { padding: [30, 30] });
+}
+
+// Pans to a point, jumping instead of flying when reduced motion is preferred.
+function panToPoint(map: L.Map, position: L.LatLngTuple) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        map.setView(position, 18);
+    } else {
+        map.flyTo(position, 18, { duration: 1 });
+    }
+}
 
 // Indoor navigation data returned by the LTB backend.
 type IndoorNode = {
@@ -50,7 +137,17 @@ const floorPlans: Record<string, string> = {
     "3": "/ltb/Floor-3.png",
 };
 
-export default function Map() {
+export default function Map({
+    walkingSpeed = "normal",
+    personalised = false,
+    canViewCrowd = false,
+}: {
+    // The logged-in student's preferred pace, used for walking time estimates.
+    walkingSpeed?: WalkingSpeed;
+    // True when walkingSpeed comes from the student's profile.
+    personalised?: boolean;
+    canViewCrowd?: boolean;
+}) {
     // Shared Leaflet map references used by outdoor and indoor workflows.
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
@@ -58,29 +155,39 @@ export default function Map() {
     const endMarkerRef = useRef<L.Marker | null>(null);
     const routeLayerRef = useRef<L.Polyline | null>(null);
     const ltbRouteLayerRef = useRef<L.Polyline | null>(null);
-    const searchMarkerRef = useRef<L.CircleMarker | null>(null);
-    const destinationRef = useRef("");
+    const pickingRef = useRef<"from" | "to" | null>(null);
+    const revisionRef = useRef(0);
+    const [panel, setPanel] = useState<"route" | "crowd">("route");
+    const [searchPanelCollapsed, setSearchPanelCollapsed] = useState(false);
+    const [routeType, setRouteType] = useState<"building" | "room">("building");
+    const [picking, setPicking] = useState<"from" | "to" | null>(null);
+    const [mapStart, setMapStart] = useState(false);
+    const [mapEnd, setMapEnd] = useState(false);
+    const [graphVisible, setGraphVisible] = useState(false);
+    const [crowdSource, setCrowdSource] = useState<"real" | "demo" | null>(null);
+    const [roomFloor, setRoomFloor] = useState("all");
+    const [roomQuery, setRoomQuery] = useState("");
 
-    // Building search: located campus buildings from the database.
+    // Building navigation: located campus buildings from the database, and
+    // the buildings chosen as the route start (From) and end (To) pins.
     const [buildings, setBuildings] = useState<BuildingLocation[]>([]);
     const [buildingsError, setBuildingsError] = useState("");
-    const selectedDepartureRef = useRef<{
-    id: string;
-    name: string;
-    latitude: number;
-    longitude: number;
-} | null>(null);
-
-const selectedDestinationRef = useRef<{
-    id: string;
-    name: string;
-    latitude: number;
-    longitude: number;
-} | null>(null);
+    const [fromBuilding, setFromBuilding] = useState<BuildingLocation | null>(null);
+    const [toBuilding, setToBuilding] = useState<BuildingLocation | null>(null);
+    const [pinRouteLoading, setPinRouteLoading] = useState(false);
+    const [pinRouteError, setPinRouteError] = useState("");
+    // Walking distance of the route drawn between the pins, if any.
+    const [pinRouteDistance, setPinRouteDistance] = useState<number | null>(null);
+    // Bumped to empty the From/To boxes when map clicks replace their pins.
+    const [buildingInputsKey, setBuildingInputsKey] = useState(0);
+    const [fromLocationKey, setFromLocationKey] = useState(0);
+    const [locationStart, setLocationStart] = useState(false);
 
     // Indoor navigation state: room list, selected destination, and floor route.
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
     const [destination, setDestination] = useState("");
+    const [indoorStartNode, setIndoorStartNode] = useState("");
+    const [indoorEndNode, setIndoorEndNode] = useState("");
     const [indoorRoute, setIndoorRoute] = useState<IndoorRouteNode[]>([]);
     const [indoorDistance, setIndoorDistance] = useState<IndoorDistance | null>(null);
     const [selectedFloor, setSelectedFloor] = useState("G");
@@ -88,82 +195,29 @@ const selectedDestinationRef = useRef<{
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<"outdoor" | "indoor">("outdoor");
     const [entranceNode, setEntranceNode] = useState("");
+    const [entranceWarning, setEntranceWarning] = useState("");
     const [routeError, setRouteError] = useState("");
     const [nodesError, setNodesError] = useState("");
 
-    const [departureSearch, setDepartureSearch] = useState("");
-    const [destinationSearch, setDestinationSearch] = useState("");
+    const invalidateRoutes = useCallback(() => {
+        revisionRef.current += 1;
+        routeLayerRef.current?.remove();
+        routeLayerRef.current = null;
+        ltbRouteLayerRef.current?.remove();
+        ltbRouteLayerRef.current = null;
+        setPinRouteDistance(null);
+        setPinRouteError("");
+        setIndoorRoute([]);
+        setIndoorDistance(null);
+        setEntranceNode("");
+        setEntranceWarning("");
+        setRouteError("");
+    }, []);
 
-    const [departureResults, setDepartureResults] = useState<
-        { id: string; name: string; latitude: number; longitude: number }[]
-    >([]);
-
-    const [destinationResults, setDestinationResults] = useState<
-        { id: string; name: string; latitude: number; longitude: number }[]
-    >([]);
-
-    const [buildingSearchLoading, setBuildingSearchLoading] = useState(false);
-    const [buildingSearchError, setBuildingSearchError] = useState("");
-
-    const [selectedDeparture, setSelectedDeparture] = useState<{
-        id: string;
-        name: string;
-        latitude: number;
-        longitude: number;
-    } | null>(null);
-
-    const [selectedDestination, setSelectedDestination] = useState<{
-        id: string;
-        name: string;
-        latitude: number;
-        longitude: number;
-    } | null>(null);
-
-    const searchBuildings = async (type: "departure" | "destination") => {
-        const query =
-            type === "departure" ? departureSearch : destinationSearch;
-
-        if (!query.trim()) {
-            if (type === "departure") {
-                setDepartureResults([]);
-            } else {
-                setDestinationResults([]);
-            }
-            return;
-        }
-
-        setBuildingSearchLoading(true);
-        setBuildingSearchError("");
-
-        try {
-            const response = await fetch(
-                `${API_URL}/search/buildings?q=${encodeURIComponent(query)}`
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to search buildings");
-            }
-
-            const data = await response.json();
-
-            if (type === "departure") {
-                setDepartureResults(data);
-            } else {
-                setDestinationResults(data);
-            }
-        } catch (error) {
-            console.error(error);
-            setBuildingSearchError("Unable to search buildings.");
-
-            if (type === "departure") {
-                setDepartureResults([]);
-            } else {
-                setDestinationResults([]);
-            }
-        } finally {
-            setBuildingSearchLoading(false);
-        }
-    };
+    function beginPicking(end: "from" | "to") {
+        pickingRef.current = end;
+        setPicking(end);
+    }
 
     useEffect(() => {
         if (!mapContainer.current) return;
@@ -171,7 +225,7 @@ const selectedDestinationRef = useRef<{
         if (!mapInstance.current) {
             // OUTDOOR MAP: initialise the Leaflet map and OpenStreetMap tiles.
             const map = L.map(mapContainer.current).setView(
-                [-37.9083, 145.1380],
+                [-37.9110, 145.1340],
                 16
             );
 
@@ -182,31 +236,8 @@ const selectedDestinationRef = useRef<{
 
             mapInstance.current = map;
 
-        const graphLayer = L.layerGroup().addTo(map);
-            fetch("/api/graph")
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.edges) {
-                        data.edges.forEach(
-                            (edge: [[number, number], [number, number]]) => {
-                                L.polyline(edge, {
-                                    color: "red",
-                                    weight: 2,
-                                    opacity: 0.6,
-                                }).addTo(graphLayer);
-                            }
-                        );
-                    }
-                })
-                .catch((error) => {
-                    console.error(
-                        "Failed to load navigation graph:",
-                        error
-                    );
-                });
-
             // OUTDOOR MAP: load buildings for the building search.
-            fetch("/api/buildings")
+            fetch(`${API_URL}/api/buildings`)
                 .then((response) => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
@@ -235,225 +266,171 @@ const selectedDestinationRef = useRef<{
                     console.warn("Failed to load indoor nodes:", error);
                 });
 
-            // OUTDOOR MAP: select points and calculate an outdoor route.
-            map.on("click", async (e) => {
-                console.log("Clicked coordinates:", e.latlng.lat, e.latlng.lng);
-                setRouteError("");
-                
-                if (selectedDepartureRef.current || selectedDestinationRef.current) {
-                        // Map-click navigation mode.
-                        // If the user clicks the map, use the clicks as the two route endpoints.
-                        if (!startMarkerRef.current) {
-                            startMarkerRef.current = L.marker(e.latlng).addTo(map);
-                            setStartSelected(true);
-                            return;
-                        }
-
-                        // If both markers already exist, start a new click-to-click route.
-                        if (endMarkerRef.current) {
-                            map.removeLayer(startMarkerRef.current);
-                            map.removeLayer(endMarkerRef.current);
-
-                            startMarkerRef.current = L.marker(e.latlng).addTo(map);
-                            endMarkerRef.current = null;
-
-                            if (routeLayerRef.current) {
-                                map.removeLayer(routeLayerRef.current);
-                                routeLayerRef.current = null;
-                            }
-
-                            setStartSelected(true);
-                            return;
-                        }
-
-                        // Second click becomes the destination.
-                        endMarkerRef.current = L.marker(e.latlng).addTo(map);
-
-                        if (routeLayerRef.current) {
-                            map.removeLayer(routeLayerRef.current);
-                            routeLayerRef.current = null;
-                        }
-
-                        try {
-                            const start = startMarkerRef.current.getLatLng();
-                            const end = endMarkerRef.current.getLatLng();
-
-                            const response = await fetch(
-                                `${API_URL}/api/building-route?start_lat=${start.lat}&start_lon=${start.lng}&end_lat=${end.lat}&end_lon=${end.lng}`
-                            );
-
-                            if (!response.ok) {
-                                throw new Error("Failed to calculate outdoor route");
-                            }
-
-                            const data = await response.json();
-
-                            if (data.error) {
-                                throw new Error(data.error);
-                            }
-
-                            if (!data.route || data.route.length === 0) {
-                                throw new Error("No route returned");
-                            }
-
-                            routeLayerRef.current = L.polyline(data.route, {
-                                color: "blue",
-                                weight: 5,
-                            }).addTo(map);
-
-                            map.fitBounds(routeLayerRef.current.getBounds(), {
-                                padding: [30, 30],
-                            });
-                        } catch (error) {
-                            console.error("Outdoor route failed:", error);
-                            setRouteError("Could not calculate the outdoor route.");
-                        }
-
-                    if (ltbRouteLayerRef.current) {
-                        map.removeLayer(ltbRouteLayerRef.current);
-                        ltbRouteLayerRef.current = null;
-                    }
-
-                    // Only route between the searched buildings once both are chosen.
-                    const departure = selectedDepartureRef.current;
-                    const buildingDestination = selectedDestinationRef.current;
-                    if (!departure || !buildingDestination) return;
-
-                    try {
-                        const response = await fetch(
-                            `${API_URL}/api/building-route?start_lat=${departure.latitude}&start_lon=${departure.longitude}&end_lat=${buildingDestination.latitude}&end_lon=${buildingDestination.longitude}`
-                        );
-
-                        if (!response.ok) {
-                            throw new Error("Failed to calculate building route");
-                        }
-
-                        const data = await response.json();
-
-                        console.log("Building route response:", data);
-
-                        if (data.error) {
-                            throw new Error(data.error);
-                        }
-
-                        routeLayerRef.current = L.polyline(data.route, {
-                            color: "blue",
-                            weight: 5,
-                        }).addTo(map);
-
-                        map.fitBounds(routeLayerRef.current.getBounds(), {
-                            padding: [30, 30],
-                        });
-                    } catch (error) {
-                        console.error(error);
-                        setRouteError("Unable to calculate route between these buildings.");
-                    }
-
-                    return;
-                }
-                
-                if (destinationRef.current) {
-                    // With an LTB room selected, every click moves the outdoor
-                    // starting point instead of creating a second destination.
-                    if (startMarkerRef.current) {
-                        startMarkerRef.current.setLatLng(e.latlng);
-                    } else {
-                        startMarkerRef.current = L.marker(e.latlng).addTo(map);
-                    }
-                    if (endMarkerRef.current) {
-                        map.removeLayer(endMarkerRef.current);
-                        endMarkerRef.current = null;
-                    }
-                    if (routeLayerRef.current) {
-                        map.removeLayer(routeLayerRef.current);
-                        routeLayerRef.current = null;
-                    }
-                    if (ltbRouteLayerRef.current) {
-                        map.removeLayer(ltbRouteLayerRef.current);
-                        ltbRouteLayerRef.current = null;
-                    }
+            // Pins only move after the user explicitly chooses what to pick.
+            map.on("click", (event: L.LeafletMouseEvent) => {
+                const end = pickingRef.current;
+                if (!end) return;
+                invalidateRoutes();
+                const marker = end === "from" ? startMarkerRef : endMarkerRef;
+                if (marker.current) marker.current.setLatLng(event.latlng);
+                else marker.current = L.marker(event.latlng).addTo(map);
+                marker.current.bindTooltip(end === "from" ? "Start: map point" : "Destination: map point");
+                if (end === "from") {
+                    setLocationStart(false);
+                    setFromBuilding(null);
+                    setMapStart(true);
                     setStartSelected(true);
-                    setIndoorRoute([]);
-                    setIndoorDistance(null);
-                    setEntranceNode("");
-                    return;
+                    setFromLocationKey(key => key + 1);
+                } else {
+                    setToBuilding(null);
+                    setMapEnd(true);
+                    setBuildingInputsKey(key => key + 1);
                 }
-
-                if (startMarkerRef.current && endMarkerRef.current) {
-                    map.removeLayer(startMarkerRef.current);
-                    map.removeLayer(endMarkerRef.current);
-                    startMarkerRef.current = null;
-                    endMarkerRef.current = null;
-                    if (routeLayerRef.current) {
-                        map.removeLayer(routeLayerRef.current);
-                        routeLayerRef.current = null;
-                    }
-                }
-
-                if (!startMarkerRef.current) {
-                    startMarkerRef.current = L.marker(e.latlng).addTo(map);
-                    setStartSelected(true);
-                    return;
-                }
-
-                endMarkerRef.current = L.marker(e.latlng).addTo(map);
-
-                try {
-                    const response = await fetch(
-                        `/api/route?start_lat=${startMarkerRef.current.getLatLng().lat}&start_lon=${startMarkerRef.current.getLatLng().lng}&end_lat=${endMarkerRef.current.getLatLng().lat}&end_lon=${endMarkerRef.current.getLatLng().lng}`
-                    );
-                    const data = await response.json();
-
-                    if (data.route) {
-                        routeLayerRef.current = L.polyline(data.route, {
-                            color: "blue",
-                            weight: 5,
-                        }).addTo(map);
-                        map.fitBounds(routeLayerRef.current.getBounds());
-                    }
-                } catch (error) {
-                    setRouteError("Could not calculate the outdoor route.");
-                    console.warn("Failed to calculate outdoor route:", error);
-                }
+                pickingRef.current = null;
+                setPicking(null);
             });
         }
-    }, []);
+        return () => {
+            mapInstance.current?.remove();
+            mapInstance.current = null;
+            startMarkerRef.current = null;
+            endMarkerRef.current = null;
+            routeLayerRef.current = null;
+            ltbRouteLayerRef.current = null;
+        };
+    }, [invalidateRoutes]);
 
     useEffect(() => {
         if (view === "outdoor") {
-            // Leaflet needs a size refresh after its container becomes visible.
+            // Refresh Leaflet when the map view or sidebar width changes.
             requestAnimationFrame(() => mapInstance.current?.invalidateSize());
         }
-    }, [view]);
+    }, [view, searchPanelCollapsed]);
 
-    // OUTDOOR MAP: mark a searched building and pan the map to it.
-    const showBuilding = (building: BuildingLocation) => {
+    useEffect(() => {
+        const map = mapInstance.current;
+        if (!map || !graphVisible) return;
+        const controller = new AbortController();
+        const group = L.layerGroup().addTo(map);
+        fetch("/api/graph", { signal: controller.signal })
+            .then(response => { if (!response.ok) throw new Error("Graph unavailable"); return response.json(); })
+            .then(data => {
+                if (controller.signal.aborted) return;
+                data.edges?.forEach((edge: [L.LatLngTuple, L.LatLngTuple]) => {
+                    L.polyline(edge, { color: "#64748b", weight: 1, opacity: 0.5, interactive: false }).addTo(group);
+                });
+            }).catch(error => { if (!controller.signal.aborted) console.warn("Could not load debug graph", error); });
+        return () => { controller.abort(); group.remove(); };
+    }, [graphVisible]);
+
+    useEffect(() => {
+        endMarkerRef.current?.setOpacity(routeType === "building" ? 1 : 0);
+    }, [routeType]);
+
+    // OUTDOOR MAP: put the start (From) or end (To) pin on a chosen building.
+    const chooseBuilding = (end: "from" | "to", building: BuildingLocation) => {
         const map = mapInstance.current;
         if (!map) return;
 
-        const position: L.LatLngExpression = [building.latitude, building.longitude];
-        if (searchMarkerRef.current) {
-            map.removeLayer(searchMarkerRef.current);
-        }
-        // A circle keeps it distinct from the route start/end pins. Stop clicks
-        // on it bubbling to the map, where they would set a route point.
-        searchMarkerRef.current = L.circleMarker(position, {
-            radius: 10,
-            color: "#c2410c",
-            weight: 3,
-            fillColor: "#f97316",
-            fillOpacity: 0.9,
-            bubblingMouseEvents: false,
-        })
-            .bindPopup(building.name)
-            .addTo(map)
-            .openPopup();
+        invalidateRoutes();
+        pickingRef.current = null;
+        setPicking(null);
 
-        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (reduceMotion) {
-            map.setView(position, 18);
+        const buildingName = building.name.toLowerCase();
+        const isLTB =
+            buildingName.includes("ltb") ||
+            buildingName.includes("learning and teaching building");
+
+        const searchEntrance = ltbEntrances.entrances.find((entry) => entry.id === ltbEntrances.building_search_entrance)!;
+        const position: L.LatLngTuple = isLTB
+            ? [searchEntrance.latitude, searchEntrance.longitude]
+            : [building.latitude, building.longitude];
+
+
+        const markerRef = end === "from" ? startMarkerRef : endMarkerRef;
+
+        if (markerRef.current) {
+            markerRef.current.setLatLng(position);
         } else {
-            map.flyTo(position, 18, { duration: 1 });
+            markerRef.current = L.marker(position).addTo(map);
+        }
+
+        markerRef.current.bindTooltip(building.name);
+
+        if (end === "from") {
+            setLocationStart(false);
+            setFromBuilding(building);
+            setMapStart(false);
+            setStartSelected(true);
+        } else {
+            setToBuilding(building);
+            setMapEnd(false);
+        }
+
+        routeLayerRef.current?.remove();
+        routeLayerRef.current = null;
+        setPinRouteDistance(null);
+        setPinRouteError("");
+
+        panToPoint(map, position);
+    };
+
+    // OUTDOOR MAP: remove the pin of a building the user has cleared.
+    const clearBuilding = (end: "from" | "to") => {
+        invalidateRoutes();
+        const markerRef = end === "from" ? startMarkerRef : endMarkerRef;
+        markerRef.current?.remove();
+        markerRef.current = null;
+        routeLayerRef.current?.remove();
+        routeLayerRef.current = null;
+        setPinRouteDistance(null);
+        if (end === "from") {
+            setLocationStart(false);
+            setFromBuilding(null);
+            setMapStart(false);
+            setStartSelected(false);
+        } else {
+            setToBuilding(null);
+            setMapEnd(false);
+        }
+    };
+
+    // OUTDOOR MAP: walking route between the From and To buildings' pins.
+    const buildPinRoute = async () => {
+        const map = mapInstance.current;
+        const start = startMarkerRef.current;
+        const end = endMarkerRef.current;
+
+        if (!map || !start || !end) return;
+
+        const revision = revisionRef.current;
+        setPinRouteLoading(true);
+        setPinRouteError("");
+
+        try {
+            const { route, distanceMeters } = await fetchWalkingRoute(
+                start.getLatLng(),
+                end.getLatLng()
+            );
+
+            if (mapInstance.current !== map || revision !== revisionRef.current) {
+                return;
+            }
+
+            drawRoute(map, routeLayerRef, route);
+            setPinRouteDistance(distanceMeters);
+        } catch (error) {
+            if (revision !== revisionRef.current) return;
+
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : String(error);
+
+            setPinRouteError(message);
+            console.error("Failed to calculate building route:", error);
+        } finally {
+            setPinRouteLoading(false);
         }
     };
 
@@ -463,7 +440,7 @@ const selectedDestinationRef = useRef<{
             ([, node]) =>
                 node.type === "room" && node.description
         )
-        .sort(([a], [b]) => a.localeCompare(b));
+        .sort(([, a], [, b]) => (["G", "1", "2", "3"].indexOf(a.floor) - ["G", "1", "2", "3"].indexOf(b.floor)) || a.description.localeCompare(b.description, undefined, { numeric: true }));
 
     const floorsInRoute = Array.from(
         new Set(indoorRoute.map((node) => node.floor))
@@ -473,22 +450,35 @@ const selectedDestinationRef = useRef<{
     const routeToLTB = async () => {
         if (!mapInstance.current || !destination) return;
         if (!startMarkerRef.current) {
-            setRouteError("Click the outdoor map once to choose your starting point.");
+            setRouteError("Choose a start building, current location, or map point.");
             return;
         }
 
         const start = startMarkerRef.current.getLatLng();
+        const map = mapInstance.current;
 
+        const revision = revisionRef.current;
         setLoading(true);
         setRouteError("");
         setIndoorRoute([]);
         setIndoorDistance(null);
 
         try {
-            const response = await fetch(
-                `${API_URL}/api/ltb-route?start_lat=${start.lat}&start_lon=${start.lng}&end_node=${destination}`
-            );
+            
+            const response = await fetch("/api/ltb-route", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({
+                    start_lat: start.lat,
+                    start_lon: start.lng,
+                    end_node: destination,
+                    walking_speed: walkingSpeed,
+                }),
+            });
+
             const data = await response.json();
+            if (mapInstance.current !== map || revision !== revisionRef.current) return;
             if (!response.ok || data.error) {
                 throw new Error(data.error || `HTTP ${response.status}`);
             }
@@ -499,15 +489,13 @@ const selectedDestinationRef = useRef<{
             if (routeLayerRef.current) {
                 mapInstance.current.removeLayer(routeLayerRef.current);
                 routeLayerRef.current = null;
+                setPinRouteDistance(null);
             }
             if (ltbRouteLayerRef.current) {
                 mapInstance.current.removeLayer(ltbRouteLayerRef.current);
                 ltbRouteLayerRef.current = null;
             }
-            if (endMarkerRef.current) {
-                mapInstance.current.removeLayer(endMarkerRef.current);
-                endMarkerRef.current = null;
-            }
+            endMarkerRef.current?.setOpacity(0);
 
             if (Array.isArray(data.outdoor_path) && data.outdoor_path.length > 0) {
                 ltbRouteLayerRef.current = L.polyline(data.outdoor_path, {
@@ -515,13 +503,16 @@ const selectedDestinationRef = useRef<{
                     weight: 5,
                 }).addTo(mapInstance.current);
                 if (data.outdoor_path.length > 1) {
-                    mapInstance.current.fitBounds(ltbRouteLayerRef.current.getBounds());
+                    mapInstance.current.fitBounds(ltbRouteLayerRef.current.getBounds(), { padding: [40, 40] });
                 }
             }
 
             setIndoorRoute(data.indoor_path);
             setSelectedFloor(data.indoor_path[0]?.floor || "G");
             setEntranceNode(data.entrance_node || "");
+            setEntranceWarning(data.entrance_mapping_verified === false
+                ? `${data.entrance_label ?? "Candidate entrance"}`
+                : "");
             if (
                 typeof data.outdoor_distance_m === "number" &&
                 typeof data.indoor_horizontal_distance_m === "number" &&
@@ -531,323 +522,358 @@ const selectedDestinationRef = useRef<{
                 setIndoorDistance(data);
             }
         } catch (error) {
+            if (revision !== revisionRef.current) return;
             setRouteError(error instanceof Error ? error.message : "Could not calculate the LTB route.");
             console.warn("Failed to calculate LTB route:", error);
         } finally {
             setLoading(false);
         }
     };
+    
+    const routeIndoorToIndoor = async () => {
+        if (!indoorStartNode || !indoorEndNode) {
+            setRouteError("Select both a starting room and a destination.");
+            return;
+        }
+
+        if (indoorStartNode === indoorEndNode) {
+            setRouteError("Choose two different locations.");
+            return;
+        }
+
+        setLoading(true);
+        setRouteError("");
+        setIndoorRoute([]);
+        setIndoorDistance(null);
+
+        try {
+            console.log("Indoor route request:", {
+                start_node: indoorStartNode,
+                end_node: indoorEndNode,
+                walking_speed: walkingSpeed,
+            });
+
+            const response = await fetch("/api/indoor-route", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({
+                    start_node: indoorStartNode,
+                    end_node: indoorEndNode,
+                    walking_speed: walkingSpeed,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(
+                    data.error || "Could not calculate the indoor route."
+                );
+            }
+
+            const path = data.indoor_path ?? data.route;
+
+            if (!Array.isArray(path) || path.length === 0) {
+                throw new Error("The API did not return an indoor route.");
+            }
+
+            const routeNodes: IndoorRouteNode[] = path.map(
+                (item: string | IndoorRouteNode) => {
+                    if (typeof item === "string") {
+                        const node = indoorNodes[item];
+                        if (!node) {
+                            throw new Error(`Missing indoor node: ${item}`);
+                        }
+                        return { id: item, ...node };
+                    }
+
+                    return { ...item, id: item.id };
+                }
+            );
+
+            setIndoorRoute(routeNodes);
+            setSelectedFloor(routeNodes[0].floor || "G");
+            setView("indoor");
+        } catch (error) {
+            setRouteError(
+                error instanceof Error
+                    ? error.message
+                    : "Could not calculate the indoor route."
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /**
+     * Smooths the visual route with quadratic curves.
+     * The actual navigation nodes and routing graph remain unchanged.
+     */
+    const smoothIndoorRoute = (
+        nodes: IndoorRouteNode[],
+        cornerCut = 18
+    ): string => {
+        if (nodes.length < 3) {
+            return nodes
+                .map((node) => `${node.x_pixel},${node.y_pixel}`)
+                .join(" ");
+        }
+
+        const points = nodes.map((node) => ({
+            x: node.x_pixel,
+            y: node.y_pixel,
+        }));
+
+        const first = points[0];
+        const last = points[points.length - 1];
+
+        let path = `M ${first.x} ${first.y}`;
+
+        for (let i = 1; i < points.length - 1; i++) {
+            const previous = points[i - 1];
+            const current = points[i];
+            const next = points[i + 1];
+
+            const incomingLength = Math.hypot(
+                current.x - previous.x,
+                current.y - previous.y
+            );
+            const outgoingLength = Math.hypot(
+                next.x - current.x,
+                next.y - current.y
+            );
+
+            // Avoid unstable corners when nodes are extremely close.
+            const cut = Math.min(
+                cornerCut,
+                incomingLength / 2,
+                outgoingLength / 2
+            );
+
+            if (incomingLength === 0 || outgoingLength === 0) {
+                path += ` L ${current.x} ${current.y}`;
+                continue;
+            }
+
+            const before = {
+                x: current.x + (previous.x - current.x) * cut / incomingLength,
+                y: current.y + (previous.y - current.y) * cut / incomingLength,
+            };
+
+            const after = {
+                x: current.x + (next.x - current.x) * cut / outgoingLength,
+                y: current.y + (next.y - current.y) * cut / outgoingLength,
+            };
+
+            path += ` L ${before.x} ${before.y}`;
+            path += ` Q ${current.x} ${current.y} ${after.x} ${after.y}`;
+        }
+
+        path += ` L ${last.x} ${last.y}`;
+
+        return path;
+};
+
 
     // INDOOR MAP: keep only the route points for the selected floor plan.
     const floorRoute = indoorRoute.filter(
         (node) => node.floor === selectedFloor
     );
 
-    const routePoints = floorRoute
-        .map((node) => `${node.x_pixel},${node.y_pixel}`)
-        .join(" ");
+    const routePath = smoothIndoorRoute(floorRoute, 18);
+
     const totalRouteDistance = indoorDistance?.total_estimated_distance_m ??
         (indoorDistance?.vertical_segments === 0 ? indoorDistance.total_known_distance_m : null);
+
+    const useLocationStart = (location: CurrentLocation) => {
+        const map = mapInstance.current;
+        if (!map || pinRouteLoading || loading) return;
+        invalidateRoutes();
+        pickingRef.current = null;
+        setPicking(null);
+        setMapStart(false);
+        const point: L.LatLngTuple = [location.latitude, location.longitude];
+        if (startMarkerRef.current) startMarkerRef.current.setLatLng(point);
+        else startMarkerRef.current = L.marker(point).addTo(map);
+        startMarkerRef.current.bindTooltip("Start: current location snapshot");
+        routeLayerRef.current?.remove();
+        routeLayerRef.current = null;
+        ltbRouteLayerRef.current?.remove();
+        ltbRouteLayerRef.current = null;
+        setFromBuilding(null);
+        setLocationStart(true);
+        setFromLocationKey((key) => key + 1);
+        setStartSelected(true);
+        setPinRouteDistance(null);
+        setPinRouteError("");
+        setIndoorRoute([]);
+        setIndoorDistance(null);
+        setEntranceNode("");
+        setRouteError("");
+        panToPoint(map, point);
+    };
 
     return (
         <div className="absolute inset-0 overflow-hidden">
             {/* Keep the campus map mounted so its route remains available on return. */}
             <div
                 ref={mapContainer}
-                className="h-full w-full"
+                className={`absolute inset-0`}
                 style={{ display: view === "outdoor" ? "block" : "none" }}
             />
 
-            {view === "outdoor" && (
-                // <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="Campus map controls">
-                //     <BuildingSearch buildings={buildings} error={buildingsError} onSelect={showBuilding} />
-
-                //     <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2>
-                    
-                <section className="absolute left-4 top-4 z-[1000] max-h-[calc(100%-2rem)] w-[min(22rem,calc(100%-2rem))] overflow-auto rounded-xl bg-white p-5 shadow-xl" aria-label="LTB route controls">
-                    <BuildingSearch buildings={buildings} error={buildingsError} onSelect={showBuilding} />
-
-                    {/* <h2 className="mt-5 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900">Route to LTB</h2> */}
-
-                    <h2 className="text-xl font-semibold text-slate-900">Navigate to Building</h2>
-
-                    <div className="mt-4 space-y-4">
-                        {/* Departure search */}
-                        <div>
-                            <label
-                                htmlFor="departure-search"
-                                className="block text-sm font-medium text-slate-800"
-                            >
-                                From
-                            </label>
-
-                            <div className="mt-1 flex gap-2">
-                                <input
-                                    id="departure-search"
-                                    type="text"
-                                    value={departureSearch}
-                                    onChange={(event) => setDepartureSearch(event.target.value)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            searchBuildings("departure");
-                                        }
-                                    }}
-                                    placeholder="Search departure building..."
-                                    className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
-                                />
-
-                                <button
-                                    type="button"
-                                    onClick={() => searchBuildings("departure")}
-                                    disabled={buildingSearchLoading}
-                                    className="rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {buildingSearchLoading ? "..." : "Search"}
-                                </button>
-                            </div>
-
-                            {departureResults.length > 0 && (
-                                <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
-                                    {departureResults.map((building) => (
-                                        <button
-                                            key={building.id}
-                                            type="button"
-                                            className="block w-full border-b border-slate-100 px-3 py-3 text-left text-sm last:border-b-0 hover:bg-slate-50"
-                                            onClick={() => {
-                                                setDepartureSearch(building.name);
-                                                setDepartureResults([]);
-                                                setSelectedDeparture(building);
-                                                selectedDepartureRef.current = building;
-
-                                                if (mapInstance.current) {
-                                                    if (startMarkerRef.current) {
-                                                        startMarkerRef.current.setLatLng([
-                                                            building.latitude,
-                                                            building.longitude,
-                                                        ]);
-                                                    } else {
-                                                        startMarkerRef.current = L.marker([
-                                                            building.latitude,
-                                                            building.longitude,
-                                                        ]).addTo(mapInstance.current);
-                                                    }
-
-                                                    mapInstance.current.setView(
-                                                        [building.latitude, building.longitude],
-                                                        18
-                                                    );
-                                                }
-                                            }}
-                                        >
-                                            <span className="font-medium text-slate-900">
-                                                {building.name}
-                                            </span>
-
-                                            <span className="mt-0.5 block text-xs text-slate-500">
-                                                Departure location
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Destination search */}
-                        <div>
-                            <label
-                                htmlFor="destination-search"
-                                className="block text-sm font-medium text-slate-800"
-                            >
-                                To
-                            </label>
-
-                            <div className="mt-1 flex gap-2">
-                                <input
-                                    id="destination-search"
-                                    type="text"
-                                    value={destinationSearch}
-                                    onChange={(event) => setDestinationSearch(event.target.value)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            searchBuildings("destination");
-                                        }
-                                    }}
-                                    placeholder="Search destination building..."
-                                    className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
-                                />
-
-                                <button
-                                    type="button"
-                                    onClick={() => searchBuildings("destination")}
-                                    disabled={buildingSearchLoading}
-                                    className="rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {buildingSearchLoading ? "..." : "Search"}
-                                </button>
-                            </div>
-
-                            {destinationResults.length > 0 && (
-                                <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
-                                    {destinationResults.map((building) => (
-                                        <button
-                                            key={building.id}
-                                            type="button"
-                                            className="block w-full border-b border-slate-100 px-3 py-3 text-left text-sm last:border-b-0 hover:bg-slate-50"
-                                            onClick={() => {
-                                                setDestinationSearch(building.name);
-                                                setDestinationResults([]);
-                                                setSelectedDestination(building);
-                                                selectedDestinationRef.current = building;
-
-                                                if (mapInstance.current) {
-                                                    if (endMarkerRef.current) {
-                                                        endMarkerRef.current.setLatLng([
-                                                            building.latitude,
-                                                            building.longitude,
-                                                        ]);
-                                                    } else {
-                                                        endMarkerRef.current = L.marker([
-                                                            building.latitude,
-                                                            building.longitude,
-                                                        ]).addTo(mapInstance.current);
-                                                    }
-
-                                                    mapInstance.current.setView(
-                                                        [building.latitude, building.longitude],
-                                                        18
-                                                    );
-                                                }
-                                            }}
-                                        >
-                                            <span className="font-medium text-slate-900">
-                                                {building.name}
-                                            </span>
-
-                                            <span className="mt-0.5 block text-xs text-slate-500">
-                                                Destination location
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {selectedDeparture && selectedDestination && (
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    if (!selectedDeparture || !selectedDestination) {
-                                        return;
-                                    }
-
-                                    setRouteError("");
-
-                                    if (routeLayerRef.current && mapInstance.current) {
-                                        mapInstance.current.removeLayer(routeLayerRef.current);
-                                        routeLayerRef.current = null;
-                                    }
-
-                                    try {
-                                        const response = await fetch(
-                                            `${API_URL}/api/building-route?start_lat=${selectedDeparture.latitude}&start_lon=${selectedDeparture.longitude}&end_lat=${selectedDestination.latitude}&end_lon=${selectedDestination.longitude}`
-                                        );
-
-                                        if (!response.ok) {
-                                            throw new Error("Failed to calculate building route");
-                                        }
-
-                                        const data = await response.json();
-
-                                        if (data.error) {
-                                            throw new Error(data.error);
-                                        }
-
-                                        if (!data.route || data.route.length === 0) {
-                                            throw new Error("No route returned");
-                                        }
-
-                                        if (mapInstance.current) {
-                                            routeLayerRef.current = L.polyline(data.route, {
-                                                color: "blue",
-                                                weight: 5,
-                                            }).addTo(mapInstance.current);
-
-                                            mapInstance.current.fitBounds(
-                                                routeLayerRef.current.getBounds(),
-                                                {
-                                                    padding: [30, 30],
-                                                }
-                                            );
-                                        }
-                                    } catch (error) {
-                                        console.error("Building route failed:", error);
-                                        setRouteError(
-                                            "Unable to calculate route between these buildings."
-                                        );
-                                    }
-                                }}
-                                className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                            >
-                                Build Route
-                            </button>
-                        )}
-                        
-                        {buildingSearchError && (
-                            <p className="text-sm text-red-700" role="alert">
-                                {buildingSearchError}
-                            </p>
-                        )}
-                    </div>
-
-                    <p className="mt-2 text-sm text-slate-600">
-                        Choose a room, click the campus map once for your starting point, then calculate the route.
-                        With a room selected, another map click moves the starting point.
-                    </p>
-
-                    <label className="mt-4 block text-sm font-medium text-slate-800" htmlFor="ltb-destination">LTB room</label>
-                    <select
-                        id="ltb-destination"
-                        value={destination}
-                        onChange={(event) => {
-                            const nextDestination = event.target.value;
-                            destinationRef.current = nextDestination;
-                            setDestination(nextDestination);
-                            setIndoorRoute([]);
-                            setIndoorDistance(null);
-                            setEntranceNode("");
-                            setRouteError("");
-                            if (ltbRouteLayerRef.current && mapInstance.current) {
-                                mapInstance.current.removeLayer(ltbRouteLayerRef.current);
-                                ltbRouteLayerRef.current = null;
-                            }
-                        }}
-                        className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
-                    >
-                        <option value="">Select LTB destination</option>
-                        {roomNodes.map(([id, node]) => (
-                            <option key={id} value={id}>
-                                Floor {node.floor} — {node.description} ({id})
-                            </option>
-                        ))}
-                    </select>
-
-                    {nodesError && <p className="mt-3 text-sm text-red-700" role="alert">{nodesError}</p>}
-                    {routeError && <p className="mt-3 text-sm text-red-700" role="alert">{routeError}</p>}
-                    {startSelected && <p className="mt-3 text-sm text-slate-600">Starting point selected on campus map.</p>}
-
+            <aside hidden={view !== "outdoor" || searchPanelCollapsed} className="absolute left-0 top-0 z-[1000] flex max-h-[65%] w-[min(360px,100%)] lg:h-full lg:max-h-none flex-col border-r border-slate-200 bg-white shadow-lg" aria-label="Campus map controls">
+                <header className="shrink-0 border-b border-slate-200 px-5 pt-5">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Clayton campus</p>
+                    <h2 className="mt-1 text-2xl font-bold text-slate-900">Explore campus</h2>
                     <button
                         type="button"
-                        onClick={routeToLTB}
-                        disabled={!destination || !startSelected || loading}
-                        className="mt-4 w-full rounded-md bg-blue-700 px-4 py-2.5 font-medium text-white enabled:hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => setSearchPanelCollapsed(true)}
+                        className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                     >
-                        {loading ? "Finding route..." : "Calculate route to LTB"}
+                        Minimise search panel
                     </button>
+                    <div className="mt-4 grid grid-cols-2 gap-1" aria-label="Map tasks">
+                        {([ ["route", "Plan a route"], ["crowd", "Crowd estimates"] ] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={panel === value} onClick={() => { setPanel(value); pickingRef.current = null; setPicking(null); }} className={`border-b-2 px-2 py-3 text-sm font-semibold ${panel === value ? "border-blue-700 text-blue-800" : "border-transparent text-slate-500 hover:text-slate-900"}`}>{label}</button>)}
+                    </div>
+                </header>
+                <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                    <div hidden={panel !== "route"}>
+                        <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1" aria-label="Destination type">
+                            {([ ["building", "Campus building"], ["room", "LTB room"] ] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={routeType === value} onClick={() => {
+                                if (value === routeType) return;
+                                invalidateRoutes(); setRouteType(value); pickingRef.current = null; setPicking(null);
+                            }} className={`rounded-md px-2 py-2 text-sm font-medium ${routeType === value ? "bg-white text-blue-800 shadow-sm" : "text-slate-600"}`}>{label}</button>)}
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <BuildingSearch key={`from-${fromLocationKey}`} label="Start" placeholder="Search a departure building" buildings={buildings} selectedLabel={locationStart ? "Current location (snapshot)" : mapStart ? "Selected map point" : undefined} onSelect={building => chooseBuilding("from", building)} onClear={() => clearBuilding("from")} />
+                                <button type="button" onClick={() => beginPicking("from")} className="mt-2 text-xs font-medium text-blue-800 underline">Choose start on map</button>
+                                <details className="mt-3 rounded-lg border border-slate-200 px-3 py-2"><summary className="cursor-pointer text-sm font-medium text-slate-700">Use my current location</summary>
+                                    <LocationControls mapRef={mapInstance} onUse={useLocationStart} busy={pinRouteLoading || loading} />
+                                </details>
+                            </div>
+                            <div hidden={routeType !== "building"}>
+                                <BuildingSearch key={`to-${buildingInputsKey}`} label="Destination" placeholder="Search a destination building" buildings={buildings} selectedLabel={mapEnd ? "Selected map point" : undefined} onSelect={building => chooseBuilding("to", building)} onClear={() => clearBuilding("to")} />
+                                <button type="button" onClick={() => beginPicking("to")} className="mt-2 text-xs font-medium text-blue-800 underline">Choose destination on map</button>
+                            </div>
+                            <div hidden={routeType !== "room"} className="space-y-2">
+                                <label className="block text-sm font-medium text-slate-800" htmlFor="room-floor">LTB floor</label>
+                                <select id="room-floor" value={roomFloor} onChange={event => setRoomFloor(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900">
+                                    <option value="all">All floors</option>{["G", "1", "2", "3"].map(floor => <option key={floor} value={floor}>{floor === "G" ? "Ground floor" : `Floor ${floor}`}</option>)}
+                                </select>
+                                <label className="sr-only" htmlFor="room-search">Search LTB rooms</label>
+                                <input id="room-search" value={roomQuery} onChange={event => setRoomQuery(event.target.value)} placeholder="Filter rooms by name…" className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-900" />
+                                <label className="block text-sm font-medium text-slate-800" htmlFor="ltb-destination">LTB room</label>
+                                <select id="ltb-destination" value={destination} onChange={event => { invalidateRoutes(); setDestination(event.target.value); }} className="w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900">
+                                    <option value="">Select a room</option>
+                                    {roomNodes.filter(([id, node]) => id === destination || ((roomFloor === "all" || node.floor === roomFloor) && node.description.toLowerCase().includes(roomQuery.toLowerCase()))).map(([id, node]) => <option key={id} value={id}>{node.description} · {node.floor === "G" ? "Ground floor" : `Floor ${node.floor}`}</option>)}
+                                </select>
+                                <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">Two candidate LTB entrances. Indoor connections await confirmation.</p>
+                                <div className="mt-6 border-t border-slate-200 pt-4">
+                                    <h3 className="text-lg font-semibold text-slate-900">
+                                        Indoor-to-indoor navigation
+                                    </h3>
 
-                    {indoorRoute.length > 0 && (
+                                    <label
+                                        htmlFor="indoor-start"
+                                        className="mt-3 block text-sm font-medium text-slate-800"
+                                    >
+                                        Starting room or location
+                                    </label>
+
+                                    <select
+                                        id="indoor-start"
+                                        value={indoorStartNode}
+                                        onChange={(event) => setIndoorStartNode(event.target.value)}
+                                        className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
+                                    >
+                                        <option value="">Select starting location</option>
+                                        {roomNodes.map(([id, node]) => (
+                                            <option key={id} value={id}>
+                                                Floor {node.floor} — {node.description} ({id})
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <label
+                                        htmlFor="indoor-end"
+                                        className="mt-3 block text-sm font-medium text-slate-800"
+                                    >
+                                        Destination room or location
+                                    </label>
+
+                                    <select
+                                        id="indoor-end"
+                                        value={indoorEndNode}
+                                        onChange={(event) => setIndoorEndNode(event.target.value)}
+                                        className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
+                                    >
+                                        <option value="">Select destination</option>
+                                        {roomNodes.map(([id, node]) => (
+                                            <option key={id} value={id}>
+                                                Floor {node.floor} — {node.description} ({id})
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <button
+                                        type="button"
+                                        onClick={routeIndoorToIndoor}
+                                        disabled={
+                                            !indoorStartNode ||
+                                            !indoorEndNode ||
+                                            indoorStartNode === indoorEndNode ||
+                                            loading
+                                        }
+                                        className="mt-4 w-full rounded-md bg-blue-700 px-4 py-2.5 font-medium text-white enabled:hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {loading ? "Finding route..." : "Navigate between rooms"}
+                                    </button>
+
+                                    {routeError && (
+                                        <p className="mt-3 text-sm text-red-700" role="alert">
+                                            {routeError}
+                                        </p>
+                                    )}
+                                </div>
+                                {nodesError && <p className="text-sm text-red-700" role="alert">{nodesError}</p>}
+                            </div>
+                            {buildingsError && <p className="text-sm text-red-700" role="alert">{buildingsError}</p>}
+                            <button type="button" onClick={routeType === "room" ? routeToLTB : buildPinRoute} disabled={pinRouteLoading || loading || !startSelected || (routeType === "room" ? !destination : (!toBuilding && !mapEnd))} className="w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50">{pinRouteLoading || loading ? "Finding route…" : "Plan route"}</button>
+                            <p className="text-xs text-slate-500">{locationStart ? "Your start is a location snapshot; moving will not change it." : fromBuilding ? `Starting at ${fromBuilding.name}.` : mapStart ? "Starting at your selected map point." : "Choose a start and destination to plan your journey."}</p>
+                            {(pinRouteError || routeError) && <p role="alert" className="text-sm text-red-700">{pinRouteError || routeError}</p>}
+                        {/* Kept mounted so screen readers announce each new estimate. */}
+                        <div aria-live="polite">
+                            {pinRouteDistance !== null && (
+                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                                    <p className="text-sm font-medium text-blue-900">Estimated walking time</p>
+                                    <p className="text-3xl font-bold text-blue-950">
+                                        {formatWalkingTime(pinRouteDistance === 0 ? 0 : estimateWalkingMinutes(pinRouteDistance, walkingSpeed))}
+                                    </p>
+                                    <p className="text-sm text-blue-900">{formatDistance(pinRouteDistance)} walk</p>
+                                    {pinRouteDistance === 0 && <p className="text-sm text-blue-900">You are already at the destination.</p>}
+                                    <p className="mt-1 text-xs text-blue-900">
+                                        {personalised ? (
+                                            <>
+                                                At your {walkingSpeed} walking pace of about {walkingPaceKmh(walkingSpeed)} km/h.{" "}
+                                                <Link href="/profile" className="underline hover:text-blue-950">
+                                                    Change pace
+                                                </Link>
+                                            </>
+                                        ) : (
+                                            <>At a normal walking pace of about {walkingPaceKmh("normal")} km/h.</>
+                                        )}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                        {indoorRoute.length > 0 && (
                         <div className="mt-5 border-t border-slate-200 pt-4" aria-live="polite">
                             <h3 className="font-semibold text-slate-900">Route calculated</h3>
-                            {entranceNode && <p className="mt-1 text-sm text-slate-600">Outdoor route to LTB entrance {entranceNode}.</p>}
+                            {entranceWarning && <p className="mt-2 text-sm text-amber-800" role="note">{entranceWarning}</p>}
+                            {entranceNode && <details className="mt-2 text-xs text-slate-600"><summary className="cursor-pointer">Entrance reference</summary>{entranceNode}</details>}
                             {indoorDistance && (
                                 <>
                                     <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
@@ -872,13 +898,13 @@ const selectedDestinationRef = useRef<{
                                     >
                                         Enter LTB — view indoor route
                                     </button>
-                                    <dl className="mt-3 space-y-1 text-sm text-slate-700">
+                                    <details className="mt-3 text-sm text-slate-700"><summary className="cursor-pointer font-medium">Distance details</summary><dl className="mt-2 space-y-1">
                                         <div className="flex justify-between gap-3"><dt>Outdoor to entrance</dt><dd>{indoorDistance.outdoor_distance_m.toFixed(1)} m</dd></div>
                                         <div className="flex justify-between gap-3"><dt>Indoor floor-plan path</dt><dd>{indoorDistance.indoor_horizontal_distance_m.toFixed(1)} m</dd></div>
                                         {indoorDistance.vertical_segments > 0 && (
                                             <div className="flex justify-between gap-3"><dt>Stairs/lift estimate</dt><dd>{indoorDistance.estimated_vertical_distance_m !== null ? `${indoorDistance.estimated_vertical_distance_m.toFixed(1)} m` : "Unavailable"}</dd></div>
                                         )}
-                                    </dl>
+                                    </dl></details>
                                     <p className="mt-2 text-xs text-slate-600">Based on the mapped route, not a field measurement.</p>
                                 </>
                             )}
@@ -892,15 +918,49 @@ const selectedDestinationRef = useRef<{
                             )}
                         </div>
                     )}
-                </section>
+
+                        </div>
+                    </div>
+                    <div hidden={panel !== "crowd"}><CrowdControls mapRef={mapInstance} canView={canViewCrowd} onSourceChange={setCrowdSource} /></div>
+                    <details className="mt-6 border-t border-slate-200 pt-3 text-xs text-slate-500"><summary className="cursor-pointer">Map tools</summary>
+                        <label className="mt-3 flex items-center gap-2"><input type="checkbox" checked={graphVisible} onChange={event => setGraphVisible(event.target.checked)} />Show navigation network (debug)</label>
+                    </details>
+                </div>
+            </aside>
+            {view === "outdoor" && searchPanelCollapsed && (
+                <button
+                    type="button"
+                    onClick={() => setSearchPanelCollapsed(false)}
+                    className="absolute left-4 top-4 z-[1100] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-lg hover:bg-slate-100"
+                >
+                    Show search
+                </button>
             )}
+
+            {view === "outdoor" && <div className="pointer-events-none absolute left-4 right-16 top-[67%] lg:left-[380px] lg:top-4 z-[1000] flex flex-col items-end gap-2" aria-live="polite">
+                {picking && <div className="pointer-events-auto rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm text-blue-900 shadow-lg">Click the map to choose your {picking === "from" ? "start" : "destination"}. <button type="button" onClick={() => { pickingRef.current = null; setPicking(null); }} className="ml-3 font-semibold underline">Cancel</button></div>}
+                {crowdSource && <p className={`rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm ${crowdSource === "demo" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-blue-200 bg-blue-50 text-blue-900"}`}>{crowdSource === "demo" ? "SIMULATED DATA · fictional students" : "TIMETABLE ESTIMATES · not live counts"}</p>}
+            </div>}
 
             {view === "indoor" && indoorRoute.length > 0 && (
                 <section className="absolute inset-0 z-[1200] flex flex-col bg-slate-50" aria-label="LTB indoor route">
                     <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">LTB indoor navigation</p>
-                            <h2 className="text-xl font-semibold text-slate-900">Floor {selectedFloor} → {indoorNodes[destination]?.description || destination}</h2>
+                            <h2 className="text-xl font-semibold text-slate-900">
+                                Floor {selectedFloor} →{" "}
+                                {indoorNodes[indoorEndNode]?.description ||
+                                    indoorNodes[destination]?.description ||
+                                    destination}
+                            </h2>
+
+                            {indoorStartNode && indoorEndNode && (
+                                <p className="text-sm text-slate-600">
+                                    From {indoorNodes[indoorStartNode]?.description || indoorStartNode}
+                                    {" "}to{" "}
+                                    {indoorNodes[indoorEndNode]?.description || indoorEndNode}
+                                </p>
+                            )}
                             <p className="text-sm text-slate-600">Blue line follows the route on the selected floor plan.</p>
                         </div>
                         <button
@@ -927,6 +987,7 @@ const selectedDestinationRef = useRef<{
                         ) : <span>Distance details are unavailable from the API.</span>}
                     </div>
 
+                    {entranceWarning && <p className="bg-amber-50 px-4 py-2 text-sm text-amber-900" role="note">{entranceWarning}</p>}
                     <nav className="flex flex-wrap items-center gap-2 bg-white px-4 py-2" aria-label="LTB route floors">
                         <span className="mr-1 text-sm text-slate-600">Route floors:</span>
                         {floorsInRoute.map((floor) => (
@@ -946,7 +1007,7 @@ const selectedDestinationRef = useRef<{
                         <svg viewBox="0 0 1722 1188" role="img" aria-label={`LTB floor ${selectedFloor} plan and indoor route`} className="mx-auto block h-auto w-full max-w-[1400px] bg-white shadow-md">
                             <image href={floorPlans[selectedFloor]} x="0" y="0" width="1722" height="1188" />
                             {floorRoute.length > 1 && (
-                                <polyline points={routePoints} fill="none" stroke="#1d4ed8" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d={routePath} fill="none" stroke="#1d4ed8" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
                             )}
                             {floorRoute.map((node) => (
                                 <circle key={node.id} cx={node.x_pixel} cy={node.y_pixel} r="10" fill="#1d4ed8" />
