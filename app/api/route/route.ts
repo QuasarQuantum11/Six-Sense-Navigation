@@ -5,6 +5,7 @@ import ltbEntrances from "@/api/ltb_entrances.json";
 import campusCentreEntrances from "@/api/campus_centre_entrances.json";
 const ltbSearchEntrance = ltbEntrances.entrances.find((entry) => entry.id === ltbEntrances.building_search_entrance)!;
 import { db } from "@/lib/db/client";
+import { getWheelchairRouteCost, isWheelchairAccessibleEdge, } from "@/lib/navigation/accessibility";
 import {
   navigationEdges,
   navigationNodes,
@@ -31,6 +32,8 @@ type Edge = {
   length: number;
   weight: number | null;
   geometry: string | null;
+  wheelchairAccessible: boolean | null;
+  hasSteps: boolean | null;
 };
 
 type Entrance = {
@@ -237,65 +240,58 @@ function findPath(
   endId: number,
   nodes: Node[],
   edges: Edge[],
+  profile: "standard" | "wheelchair" = "standard",
 ): { nodeIds: number[]; distance: number } | null {
-  if (startId === endId) {
-    return { nodeIds: [startId], distance: 0 };
-  }
-
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
 
-  const adjacency = new Map<
-    number,
-    { to: number; cost: number }[]
-  >();
+  if (!nodeMap.has(startId) || !nodeMap.has(endId)) return null;
+  if (startId === endId) return { nodeIds: [startId], distance: 0 };
 
-  for (const node of nodes) {
-    adjacency.set(node.id, []);
-  }
+  const adjacency = new Map<number, { to: number; cost: number }[]>();
+  for (const node of nodes) adjacency.set(node.id, []);
 
   for (const edge of edges) {
-    if (!nodeMap.has(edge.fromNode) || !nodeMap.has(edge.toNode)) {
+    if (!nodeMap.has(edge.fromNode) || !nodeMap.has(edge.toNode)) continue;
+
+    const edgeAccessibility = {
+      highway: edge.highway,
+      wheelchairAccessible: edge.wheelchairAccessible,
+      hasSteps: edge.hasSteps,
+    };
+    if (
+      profile === "wheelchair" &&
+      !isWheelchairAccessibleEdge(edgeAccessibility)
+    ) {
       continue;
     }
 
-    const cost =
-      edge.weight != null && edge.weight > 0
-        ? edge.weight
-        : edge.length;
-
+    const baseCost =
+      edge.weight != null && edge.weight > 0 ? edge.weight : edge.length;
+    const cost = profile === "wheelchair"
+      ? getWheelchairRouteCost(edgeAccessibility, baseCost)
+      : baseCost;
     if (!Number.isFinite(cost) || cost <= 0) continue;
 
-    adjacency.get(edge.fromNode)!.push({
-      to: edge.toNode,
-      cost,
-    });
-
+    adjacency.get(edge.fromNode)!.push({ to: edge.toNode, cost });
     if (!edge.oneway) {
-      adjacency.get(edge.toNode)!.push({
-        to: edge.fromNode,
-        cost,
-      });
+      adjacency.get(edge.toNode)!.push({ to: edge.fromNode, cost });
     }
   }
 
   const distances = new Map<number, number>();
   const previous = new Map<number, number>();
   const unvisited = new Set<number>();
-
   for (const node of nodes) {
     distances.set(node.id, Infinity);
     unvisited.add(node.id);
   }
-
   distances.set(startId, 0);
 
   while (unvisited.size > 0) {
     let currentId: number | null = null;
     let currentDistance = Infinity;
-
     for (const id of unvisited) {
       const distance = distances.get(id) ?? Infinity;
-
       if (distance < currentDistance) {
         currentDistance = distance;
         currentId = id;
@@ -304,14 +300,11 @@ function findPath(
 
     if (currentId === null || currentDistance === Infinity) break;
     if (currentId === endId) break;
-
     unvisited.delete(currentId);
 
     for (const neighbour of adjacency.get(currentId) ?? []) {
       if (!unvisited.has(neighbour.to)) continue;
-
       const candidate = currentDistance + neighbour.cost;
-
       if (candidate < (distances.get(neighbour.to) ?? Infinity)) {
         distances.set(neighbour.to, candidate);
         previous.set(neighbour.to, currentId);
@@ -319,25 +312,19 @@ function findPath(
     }
   }
 
-  if (!previous.has(endId)) return null;
+  const distance = distances.get(endId);
+  if (distance === undefined || !Number.isFinite(distance)) return null;
 
-  const nodeIds: number[] = [];
-  let currentId: number | undefined = endId;
-
-  while (currentId !== undefined) {
-    nodeIds.unshift(currentId);
-
-    if (currentId === startId) break;
-
-    currentId = previous.get(currentId);
+  const nodeIds = [endId];
+  let currentNodeId = endId;
+  while (currentNodeId !== startId) {
+    const previousNodeId = previous.get(currentNodeId);
+    if (previousNodeId === undefined) return null;
+    nodeIds.unshift(previousNodeId);
+    currentNodeId = previousNodeId;
   }
 
-  if (nodeIds[0] !== startId) return null;
-
-  return {
-    nodeIds,
-    distance: distances.get(endId) ?? Infinity,
-  };
+  return { nodeIds, distance };
 }
 
 function buildRouteCoordinates(
@@ -356,18 +343,13 @@ function buildRouteCoordinates(
 
   for (const edge of edges) {
     setEdge(edge.fromNode, edge.toNode, edge);
-
-    if (!edge.oneway) {
-      setEdge(edge.toNode, edge.fromNode, edge);
-    }
+    if (!edge.oneway) setEdge(edge.toNode, edge.fromNode, edge);
   }
 
   const coordinates: Coordinate[] = [];
-
   for (let i = 0; i < path.nodeIds.length; i++) {
     const node = nodeMap.get(path.nodeIds[i]);
     if (!node) continue;
-
     if (i === 0) {
       coordinates.push([node.latitude, node.longitude]);
       continue;
@@ -375,19 +357,13 @@ function buildRouteCoordinates(
 
     const previousNode = nodeMap.get(path.nodeIds[i - 1]);
     if (!previousNode) continue;
-
     const edge = edgeMap.get(`${previousNode.id}-${node.id}`);
 
     if (edge) {
       const from = edge.fromNode === previousNode.id ? previousNode : node;
       const to = edge.toNode === node.id ? node : previousNode;
-
       const edgeCoordinates = getEdgeCoordinates(edge, from, to);
-
-      if (edge.fromNode !== previousNode.id) {
-        edgeCoordinates.reverse();
-      }
-
+      if (edge.fromNode !== previousNode.id) edgeCoordinates.reverse();
       coordinates.push(...edgeCoordinates.slice(1));
     } else {
       coordinates.push([node.latitude, node.longitude]);
@@ -408,6 +384,7 @@ async function calculateRoute(
   startLongitude: number,
   destinationLatitude: number,
   destinationLongitude: number,
+  profile: "standard" | "wheelchair" = "standard",
 ) {
   const [storedNodes, storedEdges] = await Promise.all([
     db.select().from(navigationNodes), db.select().from(navigationEdges),
@@ -449,7 +426,7 @@ async function calculateRoute(
       if (!endNode) continue;
       destinationConnected = true;
 
-      const path = findPath(startNode.id, endNode.id, nodes, edges);
+      const path = findPath(startNode.id, endNode.id, nodes, edges, profile);
       if (!path) continue;
 
       const route = buildRouteCoordinates(path, nodes, edges);
