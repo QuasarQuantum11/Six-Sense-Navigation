@@ -1,14 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ select: vi.fn(), from: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  select: vi.fn(),
+  from: vi.fn(),
+  getWalkingPreference: vi.fn(),
+}));
 vi.mock("@/lib/db/client", () => ({ db: { select: mocks.select } }));
+vi.mock("@/lib/students/walking-preference", () => ({
+  getWalkingPreference: mocks.getWalkingPreference,
+}));
 import { GET, POST } from "../../../app/api/route/route";
 import { POST as ltbPost } from "../../../app/api/ltb-route/route";
 
 const coordinates = { startLatitude: -37.908, startLongitude: 145.138, destinationLatitude: -37.909, destinationLongitude: 145.139 };
 const ltbCoordinates = { start_lat: coordinates.startLatitude, start_lon: coordinates.startLongitude };
 function request(input: unknown) { return new Request("https://example.test/api/route", { method: "POST", body: JSON.stringify(input) }); }
-beforeEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); mocks.select.mockReturnValue({ from: mocks.from }); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  mocks.select.mockReturnValue({ from: mocks.from });
+  mocks.getWalkingPreference.mockResolvedValue({ walkingSpeed: "normal", personalised: false });
+});
+
+const accessibilityGraph = () => ({
+  nodes: [
+    { id: 1, latitude: coordinates.startLatitude, longitude: coordinates.startLongitude },
+    { id: 2, latitude: -37.9085, longitude: 145.1385 },
+    { id: 3, latitude: coordinates.destinationLatitude, longitude: coordinates.destinationLongitude },
+  ],
+  edges: [
+    { fromNode: 1, toNode: 2, oneway: false, length: 30, weight: 30, highway: "steps", wheelchairAccessible: false, hasSteps: true },
+    { fromNode: 2, toNode: 3, oneway: false, length: 30, weight: 30, highway: "footway", wheelchairAccessible: true, hasSteps: false },
+    { fromNode: 1, toNode: 3, oneway: false, length: 150, weight: 150, highway: "footway", wheelchairAccessible: true, hasSteps: false },
+  ],
+});
 
 describe("private coordinate routing", () => {
   it.each([{}, { ...coordinates, startLatitude: 999 }, { ...coordinates, destinationLongitude: 181 }, { ...coordinates, startLongitude: "invalid" }, { ...coordinates, startLatitude: null }, null, [], { ...coordinates, startLatitude: true }])("rejects invalid input before reading the graph", async (input) => {
@@ -28,6 +54,39 @@ describe("private coordinate routing", () => {
     const result = await POST(request(coordinates));
     expect(result.status).toBe(200); expect(result.headers.get("cache-control")).toBe("private, no-store");
     expect(await result.json()).toMatchObject({ distanceMeters: 150, route: [[-37.908, 145.138], [-37.909, 145.139]] });
+  });
+  it("uses wheelchair routing for a student with the saved Accessible preference", async () => {
+    mocks.getWalkingPreference.mockResolvedValueOnce({ walkingSpeed: "accessible", personalised: true });
+    const graph = accessibilityGraph();
+    mocks.from.mockResolvedValueOnce(graph.nodes).mockResolvedValueOnce(graph.edges);
+
+    const result = await POST(request({ ...coordinates, profile: "standard" }));
+
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({
+      distanceMeters: 150,
+      route: [
+        [coordinates.startLatitude, coordinates.startLongitude],
+        [coordinates.destinationLatitude, coordinates.destinationLongitude],
+      ],
+    });
+  });
+  it("does not let a guest request wheelchair routing in the payload", async () => {
+    mocks.getWalkingPreference.mockResolvedValueOnce({ walkingSpeed: "normal", personalised: false });
+    const graph = accessibilityGraph();
+    mocks.from.mockResolvedValueOnce(graph.nodes).mockResolvedValueOnce(graph.edges);
+
+    const result = await POST(request({ ...coordinates, profile: "wheelchair" }));
+
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({
+      distanceMeters: 60,
+      route: [
+        [coordinates.startLatitude, coordinates.startLongitude],
+        [-37.9085, 145.1385],
+        [coordinates.destinationLatitude, coordinates.destinationLongitude],
+      ],
+    });
   });
   it("returns zero distance for identical locations without reading the graph", async () => {
     const result = await POST(request({ ...coordinates, destinationLatitude: coordinates.startLatitude, destinationLongitude: coordinates.startLongitude }));

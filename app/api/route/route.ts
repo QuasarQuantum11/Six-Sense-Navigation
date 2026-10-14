@@ -6,6 +6,7 @@ import campusCentreEntrances from "@/api/campus_centre_entrances.json";
 const ltbSearchEntrance = ltbEntrances.entrances.find((entry) => entry.id === ltbEntrances.building_search_entrance)!;
 import { db } from "@/lib/db/client";
 import { getWheelchairRouteCost, isWheelchairAccessibleEdge, } from "@/lib/navigation/accessibility";
+import { getWalkingPreference } from "@/lib/students/walking-preference";
 import {
   navigationEdges,
   navigationNodes,
@@ -534,11 +535,17 @@ async function handleRoute(
   }
 
   try {
+    const preference = await getWalkingPreference();
+    const profile =
+      preference.personalised && preference.walkingSpeed === "accessible"
+        ? "wheelchair"
+        : "standard";
     const result = await calculateRoute(
       parsed.data.startLatitude,
       parsed.data.startLongitude,
       parsed.data.destinationLatitude,
       parsed.data.destinationLongitude,
+      profile,
     );
 
     return NextResponse.json(result, { headers: privateRouteHeaders });

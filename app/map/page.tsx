@@ -1,30 +1,6 @@
-import { eq } from "drizzle-orm";
-import { db } from "@/lib/db/client";
-import { students } from "@/lib/students/schema";
 import { getSession } from "@/lib/auth/session";
 import CampusMapLoader from "@/components/map/campus-map-loader";
-import type { WalkingSpeed } from "@/lib/navigation/walking";
-
-// Logged-in students get walking times at their own pace, read fresh from the
-// database so a change on their profile applies straight away. Guests and
-// admins get the normal pace.
-async function getWalkingPreference(): Promise<{
-  walkingSpeed: WalkingSpeed;
-  personalised: boolean;
-}> {
-  const session = await getSession();
-  if (session?.role !== "student") {
-    return { walkingSpeed: "normal", personalised: false };
-  }
-
-  const student = await db.query.students.findFirst({
-    where: eq(students.id, session.userId),
-    columns: { walkingSpeed: true },
-  });
-  return student
-    ? { walkingSpeed: student.walkingSpeed, personalised: true }
-    : { walkingSpeed: "normal", personalised: false };
-}
+import { getWalkingPreference } from "@/lib/students/walking-preference";
 
 export default async function MapPage() {
   const preference = await getWalkingPreference();
