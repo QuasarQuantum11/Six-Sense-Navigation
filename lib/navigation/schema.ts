@@ -22,6 +22,4 @@ export const navigationEdges = pgTable("navigation_edges", {
   length: doublePrecision("length").notNull(),
   weight: doublePrecision("weight"),
   geometry: text("geometry"),
-  wheelchairAccessible: boolean("wheelchair_accessible"),
-  hasSteps: boolean("has_steps"),
 });
