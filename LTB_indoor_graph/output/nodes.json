@@ -2448,5 +2448,12 @@
         "description": "Little Big Shot 3 Cafe",
         "x_pixel": 1124.48,
         "y_pixel": 663.77
+    },
+    "G_N62": {
+        "floor": "G",
+        "type": "corridor",
+        "description": "",
+        "x_pixel": 1380.65,
+        "y_pixel": 355.12
     }
 }

@@ -572,9 +572,11 @@ export default function Map({
                 );
             }
 
-            const path = data.indoor_path ?? data.route;
+            const path = data.indoor_path ?? data.path ?? data.route;
 
-            if (!Array.isArray(path) || path.length === 0) {
+            const indoorPath = data.indoor_path ?? data.path ?? data.route;
+
+            if (!Array.isArray(indoorPath) || indoorPath.length === 0) {
                 throw new Error("The API did not return an indoor route.");
             }
 

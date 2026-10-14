@@ -9,9 +9,9 @@ import os
 
 FLOOR = "G"
 
-IMAGE_PATH = f"floorplans/Floor {FLOOR}.png"
-NODES_PATH = "output/nodes.json"
-EDGES_PATH = "output/edges.json"
+IMAGE_PATH = "../floorplans/Floor G.png"
+NODES_PATH = "../output/nodes.json"
+EDGES_PATH = "../output/edges.json"
 
 # --------------------------------------------------
 # LOAD DATA
