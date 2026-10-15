@@ -124,6 +124,51 @@ type IndoorDistance = {
     total_estimate_max_m: number | null;
 };
 
+
+type WalkingInstruction = {
+    text: string;
+    floor: string;
+    nodeId: string;
+};
+
+function makeIndoorDirections(
+    route: IndoorRouteNode[]
+): WalkingInstruction[] {
+    return route.map((node, index) => {
+        let text: string;
+
+        if (index === 0) {
+            text = `Start at ${node.description || node.id}`;
+        } else if (node.floor !== route[index - 1].floor) {
+            text = `Change to floor ${node.floor}`;
+        } else if (index === route.length - 1) {
+            text = `Arrive at ${node.description || node.id}`;
+        } else {
+            const previous = route[index - 1];
+            const next = route[index + 1];
+            const ax = node.x_pixel - previous.x_pixel;
+            const ay = node.y_pixel - previous.y_pixel;
+            const bx = next.x_pixel - node.x_pixel;
+            const by = next.y_pixel - node.y_pixel;
+            const cross = ax * by - ay * bx;
+            const dot = ax * bx + ay * by;
+
+            if (dot < 0) {
+                text = "Turn around";
+            } else if (Math.abs(cross) < 0.25 * Math.hypot(ax, ay) * Math.hypot(bx, by)) {
+                text = "Continue straight";
+            } else {
+                // Floor-plan y-coordinates increase downwards.
+                text = cross < 0 ? "Turn left" : "Turn right";
+            }
+
+            if (node.description) text += ` at ${node.description}`;
+        }
+
+        return { text, floor: node.floor, nodeId: node.id };
+    });
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ??
     (process.env.NODE_ENV === "development"
         ? "http://localhost:8000"
@@ -167,6 +212,7 @@ export default function Map({
     const [crowdSource, setCrowdSource] = useState<"real" | "demo" | null>(null);
     const [roomFloor, setRoomFloor] = useState("all");
     const [roomQuery, setRoomQuery] = useState("");
+    const [completedDirections, setCompletedDirections] = useState<number[]>([]);
 
     // Building navigation: located campus buildings from the database, and
     // the buildings chosen as the route start (From) and end (To) pins.
@@ -912,7 +958,7 @@ export default function Map({
                             )}
                             {!indoorDistance && (
                                 <>
-                                    <p className="mt-2 text-sm text-slate-600">Distance details are unavailable from the API.</p>
+                                    <p className="mt-2 text-sm text-slate-600"></p>
                                     <button type="button" onClick={() => setView("indoor")} className="mt-3 w-full rounded-md bg-orange-700 px-4 py-2.5 font-semibold text-white hover:bg-orange-800">
                                         Enter LTB — view indoor route
                                     </button>
@@ -945,11 +991,18 @@ export default function Map({
             </div>}
 
             {view === "indoor" && indoorRoute.length > 0 && (
-                <section className="absolute inset-0 z-[1200] flex flex-col bg-slate-50" aria-label="LTB indoor route">
-                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">LTB indoor navigation</p>
-                            <h2 className="text-xl font-semibold text-slate-900">
+                <section
+                    className="absolute inset-0 z-[1200] flex overflow-hidden bg-slate-50"
+                    aria-label="LTB indoor route"
+                >
+                    {/* LEFT SIDEBAR */}
+                    <aside className="flex h-full w-[360px] max-w-[50vw] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white">
+                        <header className="shrink-0 border-b border-slate-200 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                                LTB indoor navigation
+                            </p>
+
+                            <h2 className="mt-1 text-xl font-semibold text-slate-900">
                                 Floor {selectedFloor} →{" "}
                                 {indoorNodes[indoorEndNode]?.description ||
                                     indoorNodes[destination]?.description ||
@@ -957,81 +1010,191 @@ export default function Map({
                             </h2>
 
                             {indoorStartNode && indoorEndNode && (
-                                <p className="text-sm text-slate-600">
+                                <p className="mt-1 text-sm text-slate-600">
                                     From {indoorNodes[indoorStartNode]?.description || indoorStartNode}
                                     {" "}to{" "}
                                     {indoorNodes[indoorEndNode]?.description || indoorEndNode}
                                 </p>
                             )}
-                            <p className="text-sm text-slate-600">Blue line follows the route on the selected floor plan.</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setView("outdoor")}
-                            className="rounded-md border border-blue-700 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
-                        >
-                            ← Back to outdoor map
-                        </button>
-                    </header>
 
-                    <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-slate-200 bg-white px-4 py-3 text-sm" aria-live="polite">
-                        {indoorDistance ? (
-                            <>
-                                <span>Outdoor: <strong>{indoorDistance.outdoor_distance_m.toFixed(1)} m</strong></span>
-                                <span>Indoor horizontal: <strong>{indoorDistance.indoor_horizontal_distance_m.toFixed(1)} m</strong></span>
-                                {indoorDistance.estimated_vertical_distance_m !== null && indoorDistance.vertical_segments > 0 && (
-                                    <span>Stairs/lift estimate: <strong>{indoorDistance.estimated_vertical_distance_m.toFixed(1)} m</strong></span>
-                                )}
-                                {indoorDistance.total_estimated_distance_m !== null && (
-                                    <span>Estimated total: <strong>{indoorDistance.total_estimated_distance_m.toFixed(1)} m</strong></span>
-                                )}
-                            </>
-                        ) : <span>Distance details are unavailable from the API.</span>}
-                    </div>
-
-                    {entranceWarning && <p className="bg-amber-50 px-4 py-2 text-sm text-amber-900" role="note">{entranceWarning}</p>}
-                    <nav className="flex flex-wrap items-center gap-2 bg-white px-4 py-2" aria-label="LTB route floors">
-                        <span className="mr-1 text-sm text-slate-600">Route floors:</span>
-                        {floorsInRoute.map((floor) => (
                             <button
-                                key={floor}
                                 type="button"
-                                onClick={() => setSelectedFloor(floor)}
-                                aria-current={selectedFloor === floor ? "step" : undefined}
-                                className={`rounded-md px-3 py-1.5 text-sm font-medium ${selectedFloor === floor ? "bg-blue-700 text-white" : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-100"}`}
+                                onClick={() => setView("outdoor")}
+                                className="mt-3 rounded-md border border-blue-700 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                             >
-                                Floor {floor}
+                                ← Back to outdoor map
                             </button>
-                        ))}
-                    </nav>
+                        </header>
 
-                    <div className="min-h-0 flex-1 overflow-auto bg-slate-200 p-3">
-                        <svg viewBox="0 0 1722 1188" role="img" aria-label={`LTB floor ${selectedFloor} plan and indoor route`} className="mx-auto block h-auto w-full max-w-[1400px] bg-white shadow-md">
-                            <image href={floorPlans[selectedFloor]} x="0" y="0" width="1722" height="1188" />
-                            {floorRoute.length > 1 && (
-                                <path d={routePath} fill="none" stroke="#1d4ed8" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+                        {/* DISTANCE SUMMARY */}
+                        <div className="shrink-0 space-y-1 border-b border-slate-200 p-3 text-sm" aria-live="polite">
+                            {indoorDistance ? (
+                                <>
+                                    <p>
+                                        Outdoor: <strong>{indoorDistance.outdoor_distance_m.toFixed(1)} m</strong>
+                                    </p>
+                                    <p>
+                                        Indoor: <strong>{indoorDistance.indoor_horizontal_distance_m.toFixed(1)} m</strong>
+                                    </p>
+
+                                    {indoorDistance.estimated_vertical_distance_m !== null &&
+                                        indoorDistance.vertical_segments > 0 && (
+                                            <p>
+                                                Stairs/lift:{" "}
+                                                <strong>{indoorDistance.estimated_vertical_distance_m.toFixed(1)} m</strong>
+                                            </p>
+                                        )}
+
+                                    {indoorDistance.total_estimated_distance_m !== null && (
+                                        <p>
+                                            Estimated total:{" "}
+                                            <strong>{indoorDistance.total_estimated_distance_m.toFixed(1)} m</strong>
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <p>Distance details are unavailable.</p>
                             )}
+                        </div>
+
+                        {entranceWarning && (
+                            <p className="shrink-0 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="note">
+                                {entranceWarning}
+                            </p>
+                        )}
+
+                        {/* FLOOR SELECTOR */}
+                        <nav className="shrink-0 border-b border-slate-200 p-3" aria-label="LTB route floors">
+                            <p className="mb-2 text-sm font-medium text-slate-700">Route floors</p>
+
+                            <div className="flex flex-wrap gap-2">
+                                {floorsInRoute.map((floor) => (
+                                    <button
+                                        key={floor}
+                                        type="button"
+                                        onClick={() => setSelectedFloor(floor)}
+                                        aria-current={selectedFloor === floor ? "step" : undefined}
+                                        className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                                            selectedFloor === floor
+                                                ? "bg-blue-700 text-white"
+                                                : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-100"
+                                        }`}
+                                    >
+                                        Floor {floor}
+                                    </button>
+                                ))}
+                            </div>
+                        </nav>
+
+                        {/* SCROLLABLE WALKING DIRECTIONS */}
+                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 p-3">
+                                <h3 className="font-semibold text-slate-900">
+                                    Walking directions
+                                </h3>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setCompletedDirections([])}
+                                    className="text-xs font-medium text-blue-700 underline"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+
+                            <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+                                {makeIndoorDirections(indoorRoute).map((step, index) => (
+                                    <li key={`${step.nodeId}-${index}`}>
+                                        <label className="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-slate-50">
+                                            <input
+                                                type="checkbox"
+                                                checked={completedDirections.includes(index)}
+                                                onChange={(event) => {
+                                                    setCompletedDirections((previous) =>
+                                                        event.target.checked
+                                                            ? [...previous, index]
+                                                            : previous.filter((item) => item !== index)
+                                                    );
+                                                }}
+                                                className="mt-1"
+                                            />
+
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block text-sm font-medium text-slate-900">
+                                                    {index + 1}. {step.text}
+                                                </span>
+                                                <span className="text-xs text-slate-500">
+                                                    Floor {step.floor}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    </li>
+                                ))}
+                            </ol>
+                        </div>
+
+                        {/* SIDEBAR FOOTER */}
+                        <footer className="shrink-0 border-t border-slate-200 p-3 text-xs text-slate-600">
+                            {indoorDistance?.vertical_segments ? (
+                                <>
+                                    {indoorDistance.stair_segments} stair and{" "}
+                                    {indoorDistance.lift_segments} lift floor change(s).
+                                    {indoorDistance.total_estimate_min_m !== null &&
+                                        indoorDistance.total_estimate_max_m !== null && (
+                                            <>
+                                                {" "}Estimated total range:{" "}
+                                                {indoorDistance.total_estimate_min_m.toFixed(1)}–
+                                                {indoorDistance.total_estimate_max_m.toFixed(1)} m.
+                                            </>
+                                        )}
+                                </>
+                            ) : (
+                                <>Indoor floor-plan distance uses the 0–50 m scale bar (14.2 pixels per metre).</>
+                            )}
+                        </footer>
+                    </aside>
+
+                    {/* RIGHT SIDE: FLOORPLAN */}
+                    <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-slate-200 p-3">
+                        <svg
+                            viewBox="0 0 1722 1188"
+                            role="img"
+                            aria-label={`LTB floor ${selectedFloor} plan and indoor route`}
+                            className="mx-auto block h-auto w-full bg-white shadow-md"
+                        >
+                            <image
+                                href={floorPlans[selectedFloor]}
+                                x="0"
+                                y="0"
+                                width="1722"
+                                height="1188"
+                            />
+
+                            {floorRoute.length > 1 && (
+                                <path
+                                    d={routePath}
+                                    fill="none"
+                                    stroke="#1d4ed8"
+                                    strokeWidth="8"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            )}
+
                             {floorRoute.map((node) => (
-                                <circle key={node.id} cx={node.x_pixel} cy={node.y_pixel} r="10" fill="#1d4ed8" />
+                                <circle
+                                    key={node.id}
+                                    cx={node.x_pixel}
+                                    cy={node.y_pixel}
+                                    r="10"
+                                    fill="#1d4ed8"
+                                />
                             ))}
                         </svg>
-                    </div>
-
-                    <footer className="border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600">
-                        {indoorDistance?.vertical_segments ? (
-                            <span>
-                                {indoorDistance.stair_segments} stair and {indoorDistance.lift_segments} lift floor change(s).
-                                {indoorDistance.total_estimate_min_m !== null && indoorDistance.total_estimate_max_m !== null && (
-                                    <> Connector-assumption range for the total: {indoorDistance.total_estimate_min_m.toFixed(1)}–{indoorDistance.total_estimate_max_m.toFixed(1)} m.</>
-                                )}
-                                {' '}These are estimates, not measured distances; map and graph error are not included in the range.
-                            </span>
-                        ) : (
-                            <span>Indoor floor-plan distance uses the 0–50 m scale bar (14.2 pixels per metre).</span>
-                        )}
-                    </footer>
+                    </main>
                 </section>
             )}
+
         </div>
     );
 }
