@@ -37,6 +37,11 @@ type WalkingRoute = {
     distanceMeters: number | null;
 };
 
+type OutdoorDirection = {
+    text: string;
+    distanceMeters: number;
+};
+
 // Fetches a walking route between two points from the Next.js routing API.
 async function fetchWalkingRoute(
     start: L.LatLng,
@@ -182,6 +187,91 @@ const floorPlans: Record<string, string> = {
     "3": "/ltb/Floor-3.png",
 };
 
+function makeOutdoorDirections(
+    route: L.LatLngTuple[],
+): OutdoorDirection[] {
+    if (route.length < 2) return [];
+
+    const distanceBetween = (
+        a: L.LatLngTuple,
+        b: L.LatLngTuple,
+    ) => L.latLng(a[0], a[1]).distanceTo(L.latLng(b[0], b[1]));
+
+    const bearing = (
+        a: L.LatLngTuple,
+        b: L.LatLngTuple,
+    ) => {
+        const rad = Math.PI / 180;
+        const lat1 = a[0] * rad;
+        const lat2 = b[0] * rad;
+        const dLon = (b[1] - a[1]) * rad;
+
+        const y = Math.sin(dLon) * Math.cos(lat2);
+        const x =
+            Math.cos(lat1) * Math.sin(lat2) -
+            Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    };
+
+    const segments = route.slice(1).map((point, index) => ({
+        from: route[index],
+        to: point,
+        distance: distanceBetween(route[index], point),
+        bearing: bearing(route[index], point),
+    })).filter(segment => segment.distance > 1);
+
+    if (!segments.length) {
+        return [{ text: "You are already at the destination.", distanceMeters: 0 }];
+    }
+
+    const directions: OutdoorDirection[] = [];
+    let groupDistance = 0;
+    let groupBearing = segments[0].bearing;
+
+    directions.push({
+        text: `Start walking ${compassDirection(groupBearing)}.`,
+        distanceMeters: 0,
+    });
+
+    for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+        groupDistance += segment.distance;
+
+        const next = segments[i + 1];
+        const isLast = !next;
+
+        if (isLast) {
+            directions.push({
+                text: `Continue to the destination (${compassDirection(segment.bearing)}).`,
+                distanceMeters: groupDistance,
+            });
+            break;
+        }
+
+        const change = ((next.bearing - segment.bearing + 540) % 360) - 180;
+
+        // Only announce a turn when the route changes direction meaningfully.
+        if (Math.abs(change) >= 35) {
+            directions.push({
+                text: `${change > 0 ? "Turn right" : "Turn left"} and continue ${compassDirection(next.bearing)}.`,
+                distanceMeters: groupDistance,
+            });
+            groupDistance = 0;
+        }
+    }
+
+    return directions;
+}
+
+function compassDirection(bearing: number): string {
+    const directions = [
+        "north", "north-east", "east", "south-east",
+        "south", "south-west", "west", "north-west",
+    ];
+    return directions[Math.round(bearing / 45) % 8];
+}
+
 export default function Map({
     walkingSpeed = "normal",
     personalised = false,
@@ -244,6 +334,8 @@ export default function Map({
     const [entranceWarning, setEntranceWarning] = useState("");
     const [routeError, setRouteError] = useState("");
     const [nodesError, setNodesError] = useState("");
+    const [outdoorDirections, setOutdoorDirections] = useState<OutdoorDirection[]>([]);
+    const [completedOutdoorDirections, setCompletedOutdoorDirections] = useState<number[]>([]);
 
     const invalidateRoutes = useCallback(() => {
         revisionRef.current += 1;
@@ -465,6 +557,8 @@ export default function Map({
 
             drawRoute(map, routeLayerRef, route);
             setPinRouteDistance(distanceMeters);
+            setOutdoorDirections(makeOutdoorDirections(route));
+            setCompletedOutdoorDirections([]);
         } catch (error) {
             if (revision !== revisionRef.current) return;
 
@@ -759,6 +853,8 @@ export default function Map({
         setIndoorDistance(null);
         setEntranceNode("");
         setRouteError("");
+        setOutdoorDirections([]);
+        setCompletedOutdoorDirections([]);
         panToPoint(map, point);
     };
 
@@ -917,6 +1013,58 @@ export default function Map({
                                 </div>
                             )}
                         </div>
+                        {outdoorDirections.length > 0 && (
+                            <section className="mt-5 border-t border-slate-200 pt-4">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h3 className="font-semibold text-slate-900">
+                                        Walking directions
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCompletedOutdoorDirections([])}
+                                        className="text-xs font-medium text-blue-700 underline"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+
+                                <ol className="mt-3 space-y-2">
+                                    {outdoorDirections.map((step, index) => (
+                                        <li key={`${index}-${step.text}`}>
+                                            <label className="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-slate-50">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={completedOutdoorDirections.includes(index)}
+                                                    onChange={event =>
+                                                        setCompletedOutdoorDirections(previous =>
+                                                            event.target.checked
+                                                                ? [...previous, index]
+                                                                : previous.filter(item => item !== index)
+                                                        )
+                                                    }
+                                                    className="mt-1"
+                                                />
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-sm font-medium text-slate-900">
+                                                        {index + 1}. {step.text}
+                                                    </span>
+                                                    {step.distanceMeters > 0 && (
+                                                        <span className="text-xs text-slate-500">
+                                                            Approximately {Math.round(step.distanceMeters)} m
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </label>
+                                        </li>
+                                    ))}
+                                </ol>
+
+                                <p className="mt-2 text-xs text-slate-500">
+                                    Directions are inferred from the mapped path. Follow campus signs
+                                    and accessible paths where available.
+                                </p>
+                            </section>
+                        )}
                         {indoorRoute.length > 0 && (
                         <div className="mt-5 border-t border-slate-200 pt-4" aria-live="polite">
                             <h3 className="font-semibold text-slate-900">Route calculated</h3>
