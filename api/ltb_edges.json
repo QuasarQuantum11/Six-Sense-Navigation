@@ -2897,5 +2897,10 @@
     "from": "3_N67",
     "to": "3_N17",
     "type": "corridor"
+  },
+  {
+    "from": "1_N30",
+    "to": "1_N31",
+    "distance_pixels": 156.03
   }
 ]
