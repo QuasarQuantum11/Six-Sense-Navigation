@@ -3,23 +3,27 @@
 import { useEffect, useId, useState } from "react";
 import { searchBuildings, type BuildingLocation } from "@/lib/buildings/search";
 
-// Accessible building search box (WAI-ARIA combobox with a listbox popup).
+// Accessible search box (WAI-ARIA combobox with a listbox popup) for campus
+// buildings, and for LTB rooms via `noun="room"`.
 // To clear it from outside, remount it with a new `key`.
-export default function BuildingSearch({
+export default function BuildingSearch<T extends Pick<BuildingLocation, "id" | "name"> = BuildingLocation>({
     label,
     placeholder,
     buildings,
     onSelect,
     onClear,
     selectedLabel,
+    noun = "building",
 }: {
     selectedLabel?: string;
     label: string;
     placeholder: string;
-    buildings: BuildingLocation[];
-    onSelect: (building: BuildingLocation) => void;
+    buildings: T[];
+    onSelect: (building: T) => void;
     // Called when the user edits or clears a building they had chosen.
     onClear?: () => void;
+    // Singular name of the items, used in announcements.
+    noun?: string;
 }) {
     const [query, setQuery] = useState("");
     const [open, setOpen] = useState(false);
@@ -37,7 +41,7 @@ export default function BuildingSearch({
         document.getElementById(optionId(activeIndex))?.scrollIntoView({ block: "nearest" });
     });
 
-    function select(building: BuildingLocation) {
+    function select(building: T) {
         setQuery(building.name);
         setOpen(false);
         setActiveIndex(-1);
@@ -89,8 +93,8 @@ export default function BuildingSearch({
     const statusMessage = !open
         ? ""
         : results.length === 0
-            ? "No buildings found."
-            : `${results.length} building${results.length === 1 ? "" : "s"} found.`;
+            ? `No ${noun}s found.`
+            : `${results.length} ${noun}${results.length === 1 ? "" : "s"} found.`;
 
     return (
         <div>
@@ -127,7 +131,7 @@ export default function BuildingSearch({
                 <ul
                     id={listId}
                     role="listbox"
-                    aria-label={`${label} buildings`}
+                    aria-label={`${label} ${noun}s`}
                     hidden={!open || results.length === 0}
                     className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-auto rounded-md border border-slate-300 bg-white py-1 shadow-lg"
                 >
@@ -154,7 +158,7 @@ export default function BuildingSearch({
                 {statusMessage}
             </p>
             {open && results.length === 0 && buildings.length > 0 && (
-                <p className="mt-2 text-sm text-slate-600">No buildings match &ldquo;{query.trim()}&rdquo;.</p>
+                <p className="mt-2 text-sm text-slate-600">No {noun}s match &ldquo;{query.trim()}&rdquo;.</p>
             )}
         </div>
     );

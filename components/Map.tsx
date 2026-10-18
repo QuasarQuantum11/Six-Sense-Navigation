@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import BuildingSearch from "@/components/map/building-search";
@@ -10,6 +10,16 @@ import Link from "next/link";
 import LocationControls from "@/components/map/location-controls";
 import CrowdControls from "@/components/map/crowd-controls";
 import { type CurrentLocation } from "@/lib/navigation/geolocation";
+import {
+    floorLabel,
+    makeIndoorDirections,
+    placeName,
+    roomOptions,
+    summariseIndoorRoute,
+    type IndoorNode,
+    type IndoorRouteNode,
+    type IndoorRouteSummary,
+} from "@/lib/navigation/indoor";
 import {
     estimateWalkingMinutes,
     formatDistance,
@@ -98,81 +108,13 @@ function panToPoint(map: L.Map, position: L.LatLngTuple) {
     }
 }
 
-// Indoor navigation data returned by the LTB backend.
-type IndoorNode = {
-    floor: string;
-    type: string;
-    description: string;
-    x_pixel: number;
-    y_pixel: number;
+// What the indoor route view describes: where the trip starts and ends.
+type IndoorTrip = {
+    from: string;
+    to: string;
+    // Entrance used by routes that start outside the LTB.
+    entrance: string | null;
 };
-
-type IndoorRouteNode = IndoorNode & {
-    id: string;
-};
-
-type IndoorDistance = {
-    outdoor_distance_m: number;
-    indoor_horizontal_distance_m: number;
-    estimated_vertical_distance_m: number | null;
-    indoor_estimated_distance_m: number | null;
-    indoor_estimate_min_m: number | null;
-    indoor_estimate_max_m: number | null;
-    map_straight_line_m: number | null;
-    vertical_segments: number;
-    lift_segments: number;
-    stair_segments: number;
-    distance_complete: boolean;
-    total_known_distance_m: number;
-    total_estimated_distance_m: number | null;
-    total_estimate_min_m: number | null;
-    total_estimate_max_m: number | null;
-};
-
-
-type WalkingInstruction = {
-    text: string;
-    floor: string;
-    nodeId: string;
-};
-
-function makeIndoorDirections(
-    route: IndoorRouteNode[]
-): WalkingInstruction[] {
-    return route.map((node, index) => {
-        let text: string;
-
-        if (index === 0) {
-            text = `Start at ${node.description || node.id}`;
-        } else if (node.floor !== route[index - 1].floor) {
-            text = `Change to floor ${node.floor}`;
-        } else if (index === route.length - 1) {
-            text = `Arrive at ${node.description || node.id}`;
-        } else {
-            const previous = route[index - 1];
-            const next = route[index + 1];
-            const ax = node.x_pixel - previous.x_pixel;
-            const ay = node.y_pixel - previous.y_pixel;
-            const bx = next.x_pixel - node.x_pixel;
-            const by = next.y_pixel - node.y_pixel;
-            const cross = ax * by - ay * bx;
-            const dot = ax * bx + ay * by;
-
-            if (dot < 0) {
-                text = "Turn around";
-            } else if (Math.abs(cross) < 0.25 * Math.hypot(ax, ay) * Math.hypot(bx, by)) {
-                text = "Continue straight";
-            } else {
-                // Floor-plan y-coordinates increase downwards.
-                text = cross < 0 ? "Turn left" : "Turn right";
-            }
-
-            if (node.description) text += ` at ${node.description}`;
-        }
-
-        return { text, floor: node.floor, nodeId: node.id };
-    });
-}
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ??
     (process.env.NODE_ENV === "development"
@@ -189,6 +131,7 @@ const floorPlans: Record<string, string> = {
 
 function makeOutdoorDirections(
     route: L.LatLngTuple[],
+    destinationName = "the destination",
 ): OutdoorDirection[] {
     if (route.length < 2) return [];
 
@@ -227,7 +170,7 @@ function makeOutdoorDirections(
 
     const directions: OutdoorDirection[] = [];
     let groupDistance = 0;
-    let groupBearing = segments[0].bearing;
+    const groupBearing = segments[0].bearing;
 
     directions.push({
         text: `Start walking ${compassDirection(groupBearing)}.`,
@@ -243,7 +186,7 @@ function makeOutdoorDirections(
 
         if (isLast) {
             directions.push({
-                text: `Continue to the destination (${compassDirection(segment.bearing)}).`,
+                text: `Continue to ${destinationName} (${compassDirection(segment.bearing)}).`,
                 distanceMeters: groupDistance,
             });
             break;
@@ -270,6 +213,32 @@ function compassDirection(bearing: number): string {
         "south", "south-west", "west", "north-west",
     ];
     return directions[Math.round(bearing / 45) % 8];
+}
+
+// "1 floor by stairs", "3 floors by lift", or null on a single floor.
+function describeFloorChanges(summary: IndoorRouteSummary | null): string | null {
+    if (!summary) return null;
+    const part = (count: number, how: string) =>
+        count > 0 ? `${count} floor${count === 1 ? "" : "s"} by ${how}` : null;
+    const parts = [part(summary.stairSegments, "stairs"), part(summary.liftSegments, "lift")].filter(Boolean);
+    return parts.length ? parts.join(" and ") : null;
+}
+
+function PaceNote({ walkingSpeed, personalised }: { walkingSpeed: WalkingSpeed; personalised: boolean }) {
+    return (
+        <p className="mt-1 text-xs text-blue-900">
+            {personalised ? (
+                <>
+                    At your {walkingSpeed} walking pace of about {walkingPaceKmh(walkingSpeed)} km/h.{" "}
+                    <Link href="/profile" className="underline hover:text-blue-950">
+                        Change pace
+                    </Link>
+                </>
+            ) : (
+                <>At a normal walking pace of about {walkingPaceKmh("normal")} km/h.</>
+            )}
+        </p>
+    );
 }
 
 export default function Map({
@@ -300,8 +269,6 @@ export default function Map({
     const [mapEnd, setMapEnd] = useState(false);
     const [graphVisible, setGraphVisible] = useState(false);
     const [crowdSource, setCrowdSource] = useState<"real" | "demo" | null>(null);
-    const [roomFloor, setRoomFloor] = useState("all");
-    const [roomQuery, setRoomQuery] = useState("");
     const [completedDirections, setCompletedDirections] = useState<number[]>([]);
 
     // Building navigation: located campus buildings from the database, and
@@ -319,20 +286,22 @@ export default function Map({
     const [fromLocationKey, setFromLocationKey] = useState(0);
     const [locationStart, setLocationStart] = useState(false);
 
-    // Indoor navigation state: room list, selected destination, and floor route.
+    // Indoor navigation state. An LTB room trip starts either outside the
+    // building (start pin) or in another LTB room (indoorStartNode).
     const [indoorNodes, setIndoorNodes] = useState<Record<string, IndoorNode>>({});
+    const [ltbStart, setLtbStart] = useState<"outside" | "inside">("outside");
     const [destination, setDestination] = useState("");
     const [indoorStartNode, setIndoorStartNode] = useState("");
-    const [indoorEndNode, setIndoorEndNode] = useState("");
     const [indoorRoute, setIndoorRoute] = useState<IndoorRouteNode[]>([]);
-    const [indoorDistance, setIndoorDistance] = useState<IndoorDistance | null>(null);
+    const [indoorSummary, setIndoorSummary] = useState<IndoorRouteSummary | null>(null);
+    const [indoorTrip, setIndoorTrip] = useState<IndoorTrip | null>(null);
+    const [activeStep, setActiveStep] = useState<string | null>(null);
     const [selectedFloor, setSelectedFloor] = useState("G");
     const [startSelected, setStartSelected] = useState(false);
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<"outdoor" | "indoor">("outdoor");
-    const [entranceNode, setEntranceNode] = useState("");
-    const [entranceWarning, setEntranceWarning] = useState("");
     const [routeError, setRouteError] = useState("");
+    const indoorResultRef = useRef<HTMLElement>(null);
     const [nodesError, setNodesError] = useState("");
     const [outdoorDirections, setOutdoorDirections] = useState<OutdoorDirection[]>([]);
     const [completedOutdoorDirections, setCompletedOutdoorDirections] = useState<number[]>([]);
@@ -345,10 +314,13 @@ export default function Map({
         ltbRouteLayerRef.current = null;
         setPinRouteDistance(null);
         setPinRouteError("");
+        setOutdoorDirections([]);
+        setCompletedOutdoorDirections([]);
         setIndoorRoute([]);
-        setIndoorDistance(null);
-        setEntranceNode("");
-        setEntranceWarning("");
+        setIndoorSummary(null);
+        setIndoorTrip(null);
+        setActiveStep(null);
+        setCompletedDirections([]);
         setRouteError("");
     }, []);
 
@@ -574,19 +546,25 @@ export default function Map({
         }
     };
 
-    // INDOOR MAP: prepare selectable LTB rooms and floors in the route.
-    const roomNodes = Object.entries(indoorNodes)
-        .filter(
-            ([, node]) =>
-                node.type === "room" && node.description
-        )
-        .sort(([, a], [, b]) => (["G", "1", "2", "3"].indexOf(a.floor) - ["G", "1", "2", "3"].indexOf(b.floor)) || a.description.localeCompare(b.description, undefined, { numeric: true }));
+    // INDOOR MAP: selectable LTB rooms, labelled without internal node IDs.
+    const rooms = useMemo(() => roomOptions(indoorNodes), [indoorNodes]);
+    const roomLabel = (id: string) => rooms.find((room) => room.id === id)?.name ?? id;
 
-    const floorsInRoute = Array.from(
-        new Set(indoorRoute.map((node) => node.floor))
-    );
+    // Shows a freshly calculated indoor route in the sidebar.
+    const showIndoorResult = (route: IndoorRouteNode[], data: Record<string, unknown>, trip: IndoorTrip) => {
+        setIndoorRoute(route);
+        setIndoorSummary(summariseIndoorRoute(data));
+        setIndoorTrip(trip);
+        setSelectedFloor(route[0]?.floor || "G");
+        setActiveStep(null);
+        setCompletedDirections([]);
+        requestAnimationFrame(() => indoorResultRef.current?.scrollIntoView({
+            block: "nearest",
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        }));
+    };
 
-    // INDOOR MAP: calculate the outdoor-to-LTB route for the selected room.
+    // INDOOR MAP: route from the start pin (outside) to an LTB room.
     const routeToLTB = async () => {
         if (!mapInstance.current || !destination) return;
         if (!startMarkerRef.current) {
@@ -596,15 +574,15 @@ export default function Map({
 
         const start = startMarkerRef.current.getLatLng();
         const map = mapInstance.current;
+        const startLabel = locationStart ? "your current location" : fromBuilding ? fromBuilding.name : "the selected map point";
 
         const revision = revisionRef.current;
         setLoading(true);
         setRouteError("");
         setIndoorRoute([]);
-        setIndoorDistance(null);
+        setIndoorSummary(null);
 
         try {
-            
             const response = await fetch("/api/ltb-route", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -626,41 +604,30 @@ export default function Map({
                 throw new Error("The API did not return an indoor route.");
             }
 
-            if (routeLayerRef.current) {
-                mapInstance.current.removeLayer(routeLayerRef.current);
-                routeLayerRef.current = null;
-                setPinRouteDistance(null);
-            }
-            if (ltbRouteLayerRef.current) {
-                mapInstance.current.removeLayer(ltbRouteLayerRef.current);
-                ltbRouteLayerRef.current = null;
-            }
+            routeLayerRef.current?.remove();
+            routeLayerRef.current = null;
+            setPinRouteDistance(null);
+            ltbRouteLayerRef.current?.remove();
+            ltbRouteLayerRef.current = null;
             endMarkerRef.current?.setOpacity(0);
+
+            const entrance = typeof data.entrance_label === "string"
+                ? placeName({ description: data.entrance_label })
+                : placeName(data.indoor_path[0]);
 
             if (Array.isArray(data.outdoor_path) && data.outdoor_path.length > 0) {
                 ltbRouteLayerRef.current = L.polyline(data.outdoor_path, {
                     color: "blue",
                     weight: 5,
-                }).addTo(mapInstance.current);
+                }).addTo(map);
                 if (data.outdoor_path.length > 1) {
-                    mapInstance.current.fitBounds(ltbRouteLayerRef.current.getBounds(), { padding: [40, 40] });
+                    map.fitBounds(ltbRouteLayerRef.current.getBounds(), { padding: [40, 40] });
                 }
+                setOutdoorDirections(makeOutdoorDirections(data.outdoor_path, `the LTB ${entrance ?? "entrance"}`));
+                setCompletedOutdoorDirections([]);
             }
 
-            setIndoorRoute(data.indoor_path);
-            setSelectedFloor(data.indoor_path[0]?.floor || "G");
-            setEntranceNode(data.entrance_node || "");
-            setEntranceWarning(data.entrance_mapping_verified === false
-                ? `${data.entrance_label ?? "Candidate entrance"}`
-                : "");
-            if (
-                typeof data.outdoor_distance_m === "number" &&
-                typeof data.indoor_horizontal_distance_m === "number" &&
-                typeof data.total_known_distance_m === "number" &&
-                (data.total_estimated_distance_m === null || typeof data.total_estimated_distance_m === "number")
-            ) {
-                setIndoorDistance(data);
-            }
+            showIndoorResult(data.indoor_path, data, { from: startLabel, to: roomLabel(destination), entrance });
         } catch (error) {
             if (revision !== revisionRef.current) return;
             setRouteError(error instanceof Error ? error.message : "Could not calculate the LTB route.");
@@ -669,42 +636,39 @@ export default function Map({
             setLoading(false);
         }
     };
-    
+
+    // INDOOR MAP: route between two LTB rooms.
     const routeIndoorToIndoor = async () => {
-        if (!indoorStartNode || !indoorEndNode) {
+        if (!indoorStartNode || !destination) {
             setRouteError("Select both a starting room and a destination.");
             return;
         }
 
-        if (indoorStartNode === indoorEndNode) {
-            setRouteError("Choose two different locations.");
+        if (indoorStartNode === destination) {
+            setRouteError("Choose two different rooms.");
             return;
         }
 
+        const revision = revisionRef.current;
         setLoading(true);
         setRouteError("");
         setIndoorRoute([]);
-        setIndoorDistance(null);
+        setIndoorSummary(null);
 
         try {
-            console.log("Indoor route request:", {
-                start_node: indoorStartNode,
-                end_node: indoorEndNode,
-                walking_speed: walkingSpeed,
-            });
-
             const response = await fetch("/api/indoor-route", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 cache: "no-store",
                 body: JSON.stringify({
                     start_node: indoorStartNode,
-                    end_node: indoorEndNode,
+                    end_node: destination,
                     walking_speed: walkingSpeed,
                 }),
             });
 
             const data = await response.json();
+            if (revision !== revisionRef.current) return;
 
             if (!response.ok || data.error) {
                 throw new Error(
@@ -714,9 +678,7 @@ export default function Map({
 
             const path = data.indoor_path ?? data.path ?? data.route;
 
-            const indoorPath = data.indoor_path ?? data.path ?? data.route;
-
-            if (!Array.isArray(indoorPath) || indoorPath.length === 0) {
+            if (!Array.isArray(path) || path.length === 0) {
                 throw new Error("The API did not return an indoor route.");
             }
 
@@ -734,10 +696,9 @@ export default function Map({
                 }
             );
 
-            setIndoorRoute(routeNodes);
-            setSelectedFloor(routeNodes[0].floor || "G");
-            setView("indoor");
+            showIndoorResult(routeNodes, data, { from: roomLabel(indoorStartNode), to: roomLabel(destination), entrance: null });
         } catch (error) {
+            if (revision !== revisionRef.current) return;
             setRouteError(
                 error instanceof Error
                     ? error.message
@@ -818,15 +779,33 @@ export default function Map({
 };
 
 
-    // INDOOR MAP: keep only the route points for the selected floor plan.
-    const floorRoute = indoorRoute.filter(
-        (node) => node.floor === selectedFloor
+    // INDOOR MAP: split the route into same-floor stretches. Floors the route
+    // only passes through inside a lift or stairwell get no plan of their own.
+    const floorStretches = indoorRoute.reduce<{ floor: string; nodes: IndoorRouteNode[] }[]>((list, node) => {
+        const last = list[list.length - 1];
+        if (last && last.floor === node.floor) last.nodes.push(node);
+        else list.push({ floor: node.floor, nodes: [node] });
+        return list;
+    }, []);
+    const planStretches = floorStretches.filter(
+        (stretch, index) => stretch.nodes.length > 1 || index === 0 || index === floorStretches.length - 1
     );
-
+    const planIndex = Math.max(0, planStretches.findIndex((stretch) => stretch.floor === selectedFloor));
+    const floorRoute = planStretches[planIndex]?.nodes ?? [];
+    const previousPlan = planStretches[planIndex - 1];
+    const nextPlan = planStretches[planIndex + 1];
+    const routeStart = indoorRoute[0];
+    const routeEnd = indoorRoute[indoorRoute.length - 1];
+    const indoorSteps = makeIndoorDirections(indoorRoute);
     const routePath = smoothIndoorRoute(floorRoute, 18);
+    const routeMinutes = indoorSummary?.totalMeters != null
+        ? estimateWalkingMinutes(indoorSummary.totalMeters, walkingSpeed)
+        : null;
 
-    const totalRouteDistance = indoorDistance?.total_estimated_distance_m ??
-        (indoorDistance?.vertical_segments === 0 ? indoorDistance.total_known_distance_m : null);
+    const showStep = (floor: string, nodeId: string | null) => {
+        setSelectedFloor(floor);
+        setActiveStep(nodeId);
+    };
 
     const useLocationStart = (location: CurrentLocation) => {
         const map = mapInstance.current;
@@ -847,16 +826,28 @@ export default function Map({
         setLocationStart(true);
         setFromLocationKey((key) => key + 1);
         setStartSelected(true);
-        setPinRouteDistance(null);
-        setPinRouteError("");
-        setIndoorRoute([]);
-        setIndoorDistance(null);
-        setEntranceNode("");
-        setRouteError("");
-        setOutdoorDirections([]);
-        setCompletedOutdoorDirections([]);
         panToPoint(map, point);
     };
+
+    // One "Plan route" button serves all three journeys.
+    const insideStart = routeType === "room" && ltbStart === "inside";
+    const canPlan = routeType === "building"
+        ? startSelected && (!!toBuilding || mapEnd)
+        : insideStart
+            ? !!indoorStartNode && !!destination && indoorStartNode !== destination
+            : startSelected && !!destination;
+    const planRoute = routeType === "building" ? buildPinRoute : insideStart ? routeIndoorToIndoor : routeToLTB;
+    const planHint = insideStart
+        ? (indoorStartNode && indoorStartNode === destination
+            ? "Choose two different rooms."
+            : "Choose the room you are in and the room you want to reach.")
+        : locationStart
+            ? "Your start is a location snapshot; moving will not change it."
+            : fromBuilding
+                ? `Starting at ${fromBuilding.name}.`
+                : mapStart
+                    ? "Starting at your selected map point."
+                    : "Choose a start and destination to plan your journey.";
 
     return (
         <div className="absolute inset-0 overflow-hidden">
@@ -891,102 +882,62 @@ export default function Map({
                             }} className={`rounded-md px-2 py-2 text-sm font-medium ${routeType === value ? "bg-white text-blue-800 shadow-sm" : "text-slate-600"}`}>{label}</button>)}
                         </div>
                         <div className="space-y-4">
-                            <div>
+                            {routeType === "room" && (
+                                <fieldset>
+                                    <legend className="text-sm font-medium text-slate-800">Starting from</legend>
+                                    <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-slate-200 p-1">
+                                        {([ ["outside", "Outside the LTB"], ["inside", "Inside the LTB"] ] as const).map(([value, label]) => (
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                aria-pressed={ltbStart === value}
+                                                onClick={() => {
+                                                    if (value === ltbStart) return;
+                                                    invalidateRoutes(); setLtbStart(value); pickingRef.current = null; setPicking(null);
+                                                }}
+                                                className={`rounded-md px-2 py-1.5 text-sm font-medium ${ltbStart === value ? "bg-blue-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </fieldset>
+                            )}
+                            <div hidden={routeType === "room" && ltbStart === "inside"}>
                                 <BuildingSearch key={`from-${fromLocationKey}`} label="Start" placeholder="Search a departure building" buildings={buildings} selectedLabel={locationStart ? "Current location (snapshot)" : mapStart ? "Selected map point" : undefined} onSelect={building => chooseBuilding("from", building)} onClear={() => clearBuilding("from")} />
                                 <button type="button" onClick={() => beginPicking("from")} className="mt-2 text-xs font-medium text-blue-800 underline">Choose start on map</button>
                                 <details className="mt-3 rounded-lg border border-slate-200 px-3 py-2"><summary className="cursor-pointer text-sm font-medium text-slate-700">Use my current location</summary>
                                     <LocationControls mapRef={mapInstance} onUse={useLocationStart} busy={pinRouteLoading || loading} />
                                 </details>
                             </div>
+                            <div hidden={routeType !== "room" || ltbStart !== "inside"}>
+                                <BuildingSearch
+                                    noun="room"
+                                    label="Start room"
+                                    placeholder="Search a room, e.g. G01 or toilets"
+                                    buildings={rooms}
+                                    onSelect={room => { invalidateRoutes(); setIndoorStartNode(room.id); }}
+                                    onClear={() => { invalidateRoutes(); setIndoorStartNode(""); }}
+                                />
+                            </div>
                             <div hidden={routeType !== "building"}>
                                 <BuildingSearch key={`to-${buildingInputsKey}`} label="Destination" placeholder="Search a destination building" buildings={buildings} selectedLabel={mapEnd ? "Selected map point" : undefined} onSelect={building => chooseBuilding("to", building)} onClear={() => clearBuilding("to")} />
                                 <button type="button" onClick={() => beginPicking("to")} className="mt-2 text-xs font-medium text-blue-800 underline">Choose destination on map</button>
                             </div>
-                            <div hidden={routeType !== "room"} className="space-y-2">
-                                <label className="block text-sm font-medium text-slate-800" htmlFor="room-floor">LTB floor</label>
-                                <select id="room-floor" value={roomFloor} onChange={event => setRoomFloor(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900">
-                                    <option value="all">All floors</option>{["G", "1", "2", "3"].map(floor => <option key={floor} value={floor}>{floor === "G" ? "Ground floor" : `Floor ${floor}`}</option>)}
-                                </select>
-                                <label className="sr-only" htmlFor="room-search">Search LTB rooms</label>
-                                <input id="room-search" value={roomQuery} onChange={event => setRoomQuery(event.target.value)} placeholder="Filter rooms by name…" className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-900" />
-                                <label className="block text-sm font-medium text-slate-800" htmlFor="ltb-destination">LTB room</label>
-                                <select id="ltb-destination" value={destination} onChange={event => { invalidateRoutes(); setDestination(event.target.value); }} className="w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900">
-                                    <option value="">Select a room</option>
-                                    {roomNodes.filter(([id, node]) => id === destination || ((roomFloor === "all" || node.floor === roomFloor) && node.description.toLowerCase().includes(roomQuery.toLowerCase()))).map(([id, node]) => <option key={id} value={id}>{node.description} · {node.floor === "G" ? "Ground floor" : `Floor ${node.floor}`}</option>)}
-                                </select>
-                                <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-900">Two candidate LTB entrances. Indoor connections await confirmation.</p>
-                                <div className="mt-6 border-t border-slate-200 pt-4">
-                                    <h3 className="text-lg font-semibold text-slate-900">
-                                        Indoor-to-indoor navigation
-                                    </h3>
-
-                                    <label
-                                        htmlFor="indoor-start"
-                                        className="mt-3 block text-sm font-medium text-slate-800"
-                                    >
-                                        Starting room or location
-                                    </label>
-
-                                    <select
-                                        id="indoor-start"
-                                        value={indoorStartNode}
-                                        onChange={(event) => setIndoorStartNode(event.target.value)}
-                                        className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
-                                    >
-                                        <option value="">Select starting location</option>
-                                        {roomNodes.map(([id, node]) => (
-                                            <option key={id} value={id}>
-                                                Floor {node.floor} — {node.description} ({id})
-                                            </option>
-                                        ))}
-                                    </select>
-
-                                    <label
-                                        htmlFor="indoor-end"
-                                        className="mt-3 block text-sm font-medium text-slate-800"
-                                    >
-                                        Destination room or location
-                                    </label>
-
-                                    <select
-                                        id="indoor-end"
-                                        value={indoorEndNode}
-                                        onChange={(event) => setIndoorEndNode(event.target.value)}
-                                        className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900"
-                                    >
-                                        <option value="">Select destination</option>
-                                        {roomNodes.map(([id, node]) => (
-                                            <option key={id} value={id}>
-                                                Floor {node.floor} — {node.description} ({id})
-                                            </option>
-                                        ))}
-                                    </select>
-
-                                    <button
-                                        type="button"
-                                        onClick={routeIndoorToIndoor}
-                                        disabled={
-                                            !indoorStartNode ||
-                                            !indoorEndNode ||
-                                            indoorStartNode === indoorEndNode ||
-                                            loading
-                                        }
-                                        className="mt-4 w-full rounded-md bg-blue-700 px-4 py-2.5 font-medium text-white enabled:hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        {loading ? "Finding route..." : "Navigate between rooms"}
-                                    </button>
-
-                                    {routeError && (
-                                        <p className="mt-3 text-sm text-red-700" role="alert">
-                                            {routeError}
-                                        </p>
-                                    )}
-                                </div>
-                                {nodesError && <p className="text-sm text-red-700" role="alert">{nodesError}</p>}
+                            <div hidden={routeType !== "room"}>
+                                <BuildingSearch
+                                    noun="room"
+                                    label="Destination room"
+                                    placeholder="Search a room, e.g. 101 or study area"
+                                    buildings={rooms}
+                                    onSelect={room => { invalidateRoutes(); setDestination(room.id); }}
+                                    onClear={() => { invalidateRoutes(); setDestination(""); }}
+                                />
+                                {nodesError && <p className="mt-2 text-sm text-red-700" role="alert">{nodesError}</p>}
                             </div>
                             {buildingsError && <p className="text-sm text-red-700" role="alert">{buildingsError}</p>}
-                            <button type="button" onClick={routeType === "room" ? routeToLTB : buildPinRoute} disabled={pinRouteLoading || loading || !startSelected || (routeType === "room" ? !destination : (!toBuilding && !mapEnd))} className="w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50">{pinRouteLoading || loading ? "Finding route…" : "Plan route"}</button>
-                            <p className="text-xs text-slate-500">{locationStart ? "Your start is a location snapshot; moving will not change it." : fromBuilding ? `Starting at ${fromBuilding.name}.` : mapStart ? "Starting at your selected map point." : "Choose a start and destination to plan your journey."}</p>
+                            <button type="button" onClick={planRoute} disabled={pinRouteLoading || loading || !canPlan} className="w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50">{pinRouteLoading || loading ? "Finding route…" : "Plan route"}</button>
+                            <p className="text-xs text-slate-500">{planHint}</p>
                             {(pinRouteError || routeError) && <p role="alert" className="text-sm text-red-700">{pinRouteError || routeError}</p>}
                         {/* Kept mounted so screen readers announce each new estimate. */}
                         <div aria-live="polite">
@@ -998,26 +949,43 @@ export default function Map({
                                     </p>
                                     <p className="text-sm text-blue-900">{formatDistance(pinRouteDistance)} walk</p>
                                     {pinRouteDistance === 0 && <p className="text-sm text-blue-900">You are already at the destination.</p>}
-                                    <p className="mt-1 text-xs text-blue-900">
-                                        {personalised ? (
-                                            <>
-                                                At your {walkingSpeed} walking pace of about {walkingPaceKmh(walkingSpeed)} km/h.{" "}
-                                                <Link href="/profile" className="underline hover:text-blue-950">
-                                                    Change pace
-                                                </Link>
-                                            </>
-                                        ) : (
-                                            <>At a normal walking pace of about {walkingPaceKmh("normal")} km/h.</>
-                                        )}
-                                    </p>
+                                    <PaceNote walkingSpeed={walkingSpeed} personalised={personalised} />
                                 </div>
+                            )}
+                            {indoorRoute.length > 0 && indoorTrip && (
+                                <section ref={indoorResultRef} className="rounded-lg border border-blue-200 bg-blue-50 p-3" aria-label="LTB route summary">
+                                    <p className="text-sm font-medium text-blue-900">Estimated walking time to {indoorTrip.to}</p>
+                                    <p className="text-3xl font-bold text-blue-950">
+                                        {routeMinutes !== null ? formatWalkingTime(routeMinutes) : "Time unavailable"}
+                                    </p>
+                                    <p className="text-sm text-blue-900">
+                                        {indoorSummary?.totalMeters != null ? `About ${formatDistance(indoorSummary.totalMeters)} walk` : "Distance unavailable"}
+                                        {describeFloorChanges(indoorSummary) && ` · ${describeFloorChanges(indoorSummary)}`}
+                                    </p>
+                                    {walkingSpeed === "accessible" && (
+                                        <p className="mt-1 text-sm font-medium text-blue-900">Step-free route: lifts only, no stairs.</p>
+                                    )}
+                                    <PaceNote walkingSpeed={walkingSpeed} personalised={personalised} />
+                                    <button
+                                        type="button"
+                                        onClick={() => setView("indoor")}
+                                        className="mt-3 w-full rounded-md bg-orange-700 px-4 py-2.5 font-semibold text-white hover:bg-orange-800"
+                                    >
+                                        View indoor route
+                                    </button>
+                                    {indoorTrip.entrance && (
+                                        <p className="mt-2 text-xs text-blue-900">
+                                            Enters the LTB at the {indoorTrip.entrance}. Entrance positions are approximate.
+                                        </p>
+                                    )}
+                                </section>
                             )}
                         </div>
                         {outdoorDirections.length > 0 && (
                             <section className="mt-5 border-t border-slate-200 pt-4">
                                 <div className="flex items-center justify-between gap-2">
                                     <h3 className="font-semibold text-slate-900">
-                                        Walking directions
+                                        {routeType === "room" ? "Walking directions to the LTB" : "Walking directions"}
                                     </h3>
                                     <button
                                         type="button"
@@ -1065,56 +1033,6 @@ export default function Map({
                                 </p>
                             </section>
                         )}
-                        {indoorRoute.length > 0 && (
-                        <div className="mt-5 border-t border-slate-200 pt-4" aria-live="polite">
-                            <h3 className="font-semibold text-slate-900">Route calculated</h3>
-                            {entranceWarning && <p className="mt-2 text-sm text-amber-800" role="note">{entranceWarning}</p>}
-                            {entranceNode && <details className="mt-2 text-xs text-slate-600"><summary className="cursor-pointer">Entrance reference</summary>{entranceNode}</details>}
-                            {indoorDistance && (
-                                <>
-                                    <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                                        <p className="text-sm font-medium text-blue-900">
-                                            {indoorDistance.vertical_segments > 0 ? "Estimated route distance" : "Map-based route distance"}
-                                        </p>
-                                        <p className="text-3xl font-bold text-blue-950">
-                                            {totalRouteDistance !== null ? `${totalRouteDistance.toFixed(1)} m` : "Distance unavailable"}
-                                        </p>
-                                        {indoorDistance.vertical_segments > 0 &&
-                                            indoorDistance.total_estimate_min_m !== null &&
-                                            indoorDistance.total_estimate_max_m !== null && (
-                                            <p className="text-xs text-blue-900">
-                                                Stair/lift assumption range: {indoorDistance.total_estimate_min_m.toFixed(1)}–{indoorDistance.total_estimate_max_m.toFixed(1)} m
-                                            </p>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setView("indoor")}
-                                        className="mt-3 w-full rounded-md bg-orange-700 px-4 py-2.5 font-semibold text-white hover:bg-orange-800"
-                                    >
-                                        Enter LTB — view indoor route
-                                    </button>
-                                    <details className="mt-3 text-sm text-slate-700"><summary className="cursor-pointer font-medium">Distance details</summary><dl className="mt-2 space-y-1">
-                                        <div className="flex justify-between gap-3"><dt>Outdoor to entrance</dt><dd>{indoorDistance.outdoor_distance_m.toFixed(1)} m</dd></div>
-                                        <div className="flex justify-between gap-3"><dt>Indoor floor-plan path</dt><dd>{indoorDistance.indoor_horizontal_distance_m.toFixed(1)} m</dd></div>
-                                        {indoorDistance.vertical_segments > 0 && (
-                                            <div className="flex justify-between gap-3"><dt>Stairs/lift estimate</dt><dd>{indoorDistance.estimated_vertical_distance_m !== null ? `${indoorDistance.estimated_vertical_distance_m.toFixed(1)} m` : "Unavailable"}</dd></div>
-                                        )}
-                                    </dl></details>
-                                    <p className="mt-2 text-xs text-slate-600">Based on the mapped route, not a field measurement.</p>
-                                </>
-                            )}
-                            {!indoorDistance && (
-                                <>
-                                    <p className="mt-2 text-sm text-slate-600"></p>
-                                    <button type="button" onClick={() => setView("indoor")} className="mt-3 w-full rounded-md bg-orange-700 px-4 py-2.5 font-semibold text-white hover:bg-orange-800">
-                                        Enter LTB — view indoor route
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
-
                         </div>
                     </div>
                     <div hidden={panel !== "crowd"}><CrowdControls mapRef={mapInstance} canView={canViewCrowd} onSourceChange={setCrowdSource} /></div>
@@ -1138,109 +1056,96 @@ export default function Map({
                 {crowdSource && <p className={`rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm ${crowdSource === "demo" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-blue-200 bg-blue-50 text-blue-900"}`}>{crowdSource === "demo" ? "SIMULATED DATA · fictional students" : "TIMETABLE ESTIMATES · not live counts"}</p>}
             </div>}
 
-            {view === "indoor" && indoorRoute.length > 0 && (
+            {view === "indoor" && indoorRoute.length > 0 && indoorTrip && (
                 <section
-                    className="absolute inset-0 z-[1200] flex overflow-hidden bg-slate-50"
+                    className="absolute inset-0 z-[1200] flex flex-col overflow-hidden bg-slate-50 lg:flex-row"
                     aria-label="LTB indoor route"
                 >
                     {/* LEFT SIDEBAR */}
-                    <aside className="flex h-full w-[360px] max-w-[50vw] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white">
+                    <aside className="flex max-h-[50%] w-full shrink-0 flex-col overflow-hidden border-b border-slate-200 bg-white lg:h-full lg:max-h-none lg:w-[360px] lg:border-b-0 lg:border-r">
                         <header className="shrink-0 border-b border-slate-200 p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                                LTB indoor navigation
+                                LTB indoor route
                             </p>
-
                             <h2 className="mt-1 text-xl font-semibold text-slate-900">
-                                Floor {selectedFloor} →{" "}
-                                {indoorNodes[indoorEndNode]?.description ||
-                                    indoorNodes[destination]?.description ||
-                                    destination}
+                                To {indoorTrip.to}
                             </h2>
-
-                            {indoorStartNode && indoorEndNode && (
-                                <p className="mt-1 text-sm text-slate-600">
-                                    From {indoorNodes[indoorStartNode]?.description || indoorStartNode}
-                                    {" "}to{" "}
-                                    {indoorNodes[indoorEndNode]?.description || indoorEndNode}
-                                </p>
-                            )}
-
+                            <p className="mt-1 text-sm text-slate-600">
+                                From {indoorTrip.from}
+                                {indoorTrip.entrance && <> · enter at the {indoorTrip.entrance}</>}
+                            </p>
                             <button
                                 type="button"
                                 onClick={() => setView("outdoor")}
                                 className="mt-3 rounded-md border border-blue-700 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                             >
-                                ← Back to outdoor map
+                                ← Back to campus map
                             </button>
                         </header>
 
-                        {/* DISTANCE SUMMARY */}
-                        <div className="shrink-0 space-y-1 border-b border-slate-200 p-3 text-sm" aria-live="polite">
-                            {indoorDistance ? (
-                                <>
-                                    <p>
-                                        Outdoor: <strong>{indoorDistance.outdoor_distance_m.toFixed(1)} m</strong>
-                                    </p>
-                                    <p>
-                                        Indoor: <strong>{indoorDistance.indoor_horizontal_distance_m.toFixed(1)} m</strong>
-                                    </p>
-
-                                    {indoorDistance.estimated_vertical_distance_m !== null &&
-                                        indoorDistance.vertical_segments > 0 && (
-                                            <p>
-                                                Stairs/lift:{" "}
-                                                <strong>{indoorDistance.estimated_vertical_distance_m.toFixed(1)} m</strong>
-                                            </p>
+                        {/* SUMMARY */}
+                        <div className="shrink-0 border-b border-slate-200 p-4" aria-live="polite">
+                            <p className="text-2xl font-bold text-slate-900">
+                                {routeMinutes !== null ? formatWalkingTime(routeMinutes) : "Time unavailable"}
+                                {indoorSummary?.totalMeters != null && (
+                                    <span className="ml-2 text-base font-medium text-slate-600">about {formatDistance(indoorSummary.totalMeters)}</span>
+                                )}
+                            </p>
+                            {describeFloorChanges(indoorSummary) && (
+                                <p className="mt-1 text-sm text-slate-700">{describeFloorChanges(indoorSummary)}</p>
+                            )}
+                            {walkingSpeed === "accessible" && (
+                                <p className="mt-1 text-sm font-medium text-blue-800">Step-free route: lifts only, no stairs.</p>
+                            )}
+                            {indoorSummary && (
+                                <details className="mt-2 text-sm text-slate-700">
+                                    <summary className="cursor-pointer font-medium">Distance details</summary>
+                                    <dl className="mt-2 space-y-1">
+                                        {indoorSummary.outdoorMeters !== null && (
+                                            <div className="flex justify-between gap-3"><dt>Walk to the LTB</dt><dd>{formatDistance(indoorSummary.outdoorMeters)}</dd></div>
                                         )}
-
-                                    {indoorDistance.total_estimated_distance_m !== null && (
-                                        <p>
-                                            Estimated total:{" "}
-                                            <strong>{indoorDistance.total_estimated_distance_m.toFixed(1)} m</strong>
-                                        </p>
-                                    )}
-                                </>
-                            ) : (
-                                <p>Distance details are unavailable.</p>
+                                        <div className="flex justify-between gap-3"><dt>Inside the LTB</dt><dd>{formatDistance(indoorSummary.indoorMeters)}</dd></div>
+                                        {indoorSummary.verticalMeters !== null && (indoorSummary.liftSegments + indoorSummary.stairSegments) > 0 && (
+                                            <div className="flex justify-between gap-3"><dt>Stairs and lifts (estimate)</dt><dd>{formatDistance(indoorSummary.verticalMeters)}</dd></div>
+                                        )}
+                                    </dl>
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        Estimated from the floor plans{indoorTrip.entrance ? "; entrance positions are approximate" : ""}.
+                                    </p>
+                                </details>
                             )}
                         </div>
 
-                        {entranceWarning && (
-                            <p className="shrink-0 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="note">
-                                {entranceWarning}
-                            </p>
+                        {/* FLOORS */}
+                        {planStretches.length > 1 && (
+                            <nav className="shrink-0 border-b border-slate-200 p-3" aria-label="Floors on this route">
+                                <p className="mb-2 text-sm font-medium text-slate-700">Floors on this route</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {planStretches.map((stretch, index) => (
+                                        <button
+                                            key={`${stretch.floor}-${index}`}
+                                            type="button"
+                                            onClick={() => showStep(stretch.floor, null)}
+                                            aria-current={index === planIndex ? "step" : undefined}
+                                            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                                                index === planIndex
+                                                    ? "bg-blue-700 text-white"
+                                                    : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-100"
+                                            }`}
+                                        >
+                                            {index + 1}. {floorLabel(stretch.floor)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </nav>
                         )}
 
-                        {/* FLOOR SELECTOR */}
-                        <nav className="shrink-0 border-b border-slate-200 p-3" aria-label="LTB route floors">
-                            <p className="mb-2 text-sm font-medium text-slate-700">Route floors</p>
-
-                            <div className="flex flex-wrap gap-2">
-                                {floorsInRoute.map((floor) => (
-                                    <button
-                                        key={floor}
-                                        type="button"
-                                        onClick={() => setSelectedFloor(floor)}
-                                        aria-current={selectedFloor === floor ? "step" : undefined}
-                                        className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                                            selectedFloor === floor
-                                                ? "bg-blue-700 text-white"
-                                                : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-100"
-                                        }`}
-                                    >
-                                        Floor {floor}
-                                    </button>
-                                ))}
-                            </div>
-                        </nav>
-
-                        {/* SCROLLABLE WALKING DIRECTIONS */}
+                        {/* WALKING DIRECTIONS, grouped by floor */}
                         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 p-3">
                                 <h3 className="font-semibold text-slate-900">
                                     Walking directions
                                 </h3>
-
                                 <button
                                     type="button"
                                     onClick={() => setCompletedDirections([])}
@@ -1250,73 +1155,83 @@ export default function Map({
                                 </button>
                             </div>
 
-                            <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
-                                {makeIndoorDirections(indoorRoute).map((step, index) => (
-                                    <li key={`${step.nodeId}-${index}`}>
-                                        <label className="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-slate-50">
-                                            <input
-                                                type="checkbox"
-                                                checked={completedDirections.includes(index)}
-                                                onChange={(event) => {
-                                                    setCompletedDirections((previous) =>
-                                                        event.target.checked
-                                                            ? [...previous, index]
-                                                            : previous.filter((item) => item !== index)
-                                                    );
-                                                }}
-                                                className="mt-1"
-                                            />
-
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block text-sm font-medium text-slate-900">
-                                                    {index + 1}. {step.text}
-                                                </span>
-                                                <span className="text-xs text-slate-500">
-                                                    Floor {step.floor}
-                                                </span>
-                                            </span>
-                                        </label>
-                                    </li>
-                                ))}
-                            </ol>
+                            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                                {planStretches.map((stretch, stretchIndex) => {
+                                    const steps = indoorSteps
+                                        .map((step, index) => ({ step, index }))
+                                        .filter(({ step }) => step.floor === stretch.floor);
+                                    if (steps.length === 0) return null;
+                                    const current = stretchIndex === planIndex;
+                                    return (
+                                        <section key={`${stretch.floor}-${stretchIndex}`} className="mb-2">
+                                            <h4 className={`px-2 py-1 text-xs font-semibold uppercase tracking-wide ${current ? "text-blue-700" : "text-slate-500"}`}>
+                                                {floorLabel(stretch.floor)}
+                                            </h4>
+                                            <ol className="space-y-1">
+                                                {steps.map(({ step, index }) => (
+                                                    <li key={`${step.nodeId}-${index}`} className={`flex items-start gap-3 rounded-md p-2 ${activeStep === step.nodeId ? "bg-blue-50" : "hover:bg-slate-50"}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            aria-label={`Mark step ${index + 1} as done`}
+                                                            checked={completedDirections.includes(index)}
+                                                            onChange={(event) => {
+                                                                setCompletedDirections((previous) =>
+                                                                    event.target.checked
+                                                                        ? [...previous, index]
+                                                                        : previous.filter((item) => item !== index)
+                                                                );
+                                                            }}
+                                                            className="mt-1"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => showStep(step.floor, step.nodeId)}
+                                                            className={`min-w-0 flex-1 text-left text-sm font-medium ${completedDirections.includes(index) ? "text-slate-400 line-through" : "text-slate-900"}`}
+                                                        >
+                                                            {index + 1}. {step.text}
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        </section>
+                                    );
+                                })}
+                            </div>
+                            <p className="shrink-0 border-t border-slate-200 p-3 text-xs text-slate-500">
+                                Select a step to show it on the floor plan.
+                            </p>
                         </div>
-
-                        {/* SIDEBAR FOOTER */}
-                        <footer className="shrink-0 border-t border-slate-200 p-3 text-xs text-slate-600">
-                            {indoorDistance?.vertical_segments ? (
-                                <>
-                                    {indoorDistance.stair_segments} stair and{" "}
-                                    {indoorDistance.lift_segments} lift floor change(s).
-                                    {indoorDistance.total_estimate_min_m !== null &&
-                                        indoorDistance.total_estimate_max_m !== null && (
-                                            <>
-                                                {" "}Estimated total range:{" "}
-                                                {indoorDistance.total_estimate_min_m.toFixed(1)}–
-                                                {indoorDistance.total_estimate_max_m.toFixed(1)} m.
-                                            </>
-                                        )}
-                                </>
-                            ) : (
-                                <>Indoor floor-plan distance uses the 0–50 m scale bar (14.2 pixels per metre).</>
-                            )}
-                        </footer>
                     </aside>
 
-                    {/* RIGHT SIDE: FLOORPLAN */}
+                    {/* RIGHT SIDE: FLOOR PLAN */}
                     <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-slate-200 p-3">
+                        <div className="mx-auto mb-2 flex max-w-full items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-slate-800">{floorLabel(planStretches[planIndex]?.floor ?? selectedFloor)}</p>
+                            {nextPlan && (
+                                <button
+                                    type="button"
+                                    onClick={() => showStep(nextPlan.floor, null)}
+                                    className="rounded-md bg-blue-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-800"
+                                >
+                                    Next: {floorLabel(nextPlan.floor)} →
+                                </button>
+                            )}
+                        </div>
                         <svg
                             viewBox="0 0 1722 1188"
                             role="img"
-                            aria-label={`LTB floor ${selectedFloor} plan and indoor route`}
+                            aria-label={`LTB ${floorLabel(selectedFloor)} plan with the route`}
                             className="mx-auto block h-auto w-full bg-white shadow-md"
                         >
                             <image
-                                href={floorPlans[selectedFloor]}
+                                href={floorPlans[planStretches[planIndex]?.floor ?? selectedFloor]}
                                 x="0"
                                 y="0"
                                 width="1722"
                                 height="1188"
                             />
+                            {/* The plan images include buttons from a print dialog in this corner. */}
+                            <rect x="0" y="0" width="178" height="84" fill="white" />
 
                             {floorRoute.length > 1 && (
                                 <path
@@ -1329,15 +1244,53 @@ export default function Map({
                                 />
                             )}
 
-                            {floorRoute.map((node) => (
-                                <circle
-                                    key={node.id}
-                                    cx={node.x_pixel}
-                                    cy={node.y_pixel}
-                                    r="10"
-                                    fill="#1d4ed8"
-                                />
-                            ))}
+                            {floorRoute.length > 0 && (() => {
+                                const first = floorRoute[0];
+                                const last = floorRoute[floorRoute.length - 1];
+                                const markers: { node: IndoorRouteNode; label: string; color: string; onSelect?: () => void }[] = [];
+                                if (first.id === routeStart?.id) markers.push({ node: first, label: "Start", color: "#15803d" });
+                                else if (previousPlan) markers.push({ node: first, label: `Arrive from ${floorLabel(previousPlan.floor)}`, color: "#c2410c" });
+                                if (last.id === routeEnd?.id) markers.push({ node: last, label: indoorTrip.to.split(" · ")[0], color: "#b91c1c" });
+                                else if (nextPlan) markers.push({
+                                    node: last,
+                                    label: `${placeName(last) ?? (last.type === "lift" ? "Lift" : "Stairs")} to ${floorLabel(nextPlan.floor)}`,
+                                    color: "#c2410c",
+                                    onSelect: () => showStep(nextPlan.floor, null),
+                                });
+                                const active = floorRoute.find((node) => node.id === activeStep);
+                                return (
+                                    <>
+                                        {active && (
+                                            <circle cx={active.x_pixel} cy={active.y_pixel} r="26" fill="none" stroke="#1d4ed8" strokeWidth="6" />
+                                        )}
+                                        {markers.map(({ node, label, color, onSelect }) => {
+                                            const right = node.x_pixel > 1400;
+                                            return (
+                                                <g
+                                                    key={`${node.id}-${label}`}
+                                                    onClick={onSelect}
+                                                    className={onSelect ? "cursor-pointer" : undefined}
+                                                >
+                                                    <circle cx={node.x_pixel} cy={node.y_pixel} r="16" fill={color} stroke="white" strokeWidth="5" />
+                                                    <text
+                                                        x={node.x_pixel + (right ? -26 : 26)}
+                                                        y={node.y_pixel - 22}
+                                                        textAnchor={right ? "end" : "start"}
+                                                        fontSize="34"
+                                                        fontWeight="700"
+                                                        fill={color}
+                                                        stroke="white"
+                                                        strokeWidth="9"
+                                                        paintOrder="stroke"
+                                                    >
+                                                        {label}
+                                                    </text>
+                                                </g>
+                                            );
+                                        })}
+                                    </>
+                                );
+                            })()}
                         </svg>
                     </main>
                 </section>
