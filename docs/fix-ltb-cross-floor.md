@@ -1,15 +1,17 @@
-# Fix: LTB cross-floor and step-free indoor routing
+# Fix: LTB indoor routing and indoor navigation usability
 
-Branch: `fix/ltb-cross-floor-edges` · Based on: `main` `4fa0dc8` · Date: 18 Oct 2026 · Author: Jiaqi
-Status: **ready for review; not merged into `main`**. Jasleen owns the LTB indoor data and should confirm before merging.
+Branch: `fix/ltb-cross-floor-edges` · Based on: `main` `4fa0dc8` · Date: 18–19 Oct 2026 · Author: Jiaqi
+Status: **ready for review; not merged into `main`**. Jasleen owns the LTB indoor data and the indoor route view and should confirm before merging.
 
-This branch fixes three problems:
+**Part A (routing data and tests)** fixes three problems:
 
 | # | Problem | Fix |
 |---|---|---|
 | 1 | No indoor route can change floors (R2) | Restore 24 lift and stair edges and 2 room links that `2f8978d` dropped |
 | 2 | Step-free routes cannot reach the floor 1 study area | Add the missing corridor link `1_N30–1_N31`, confirmed on the Level 1 floor plan |
 | 3 | A Vitest suite (182 real-campus outdoor routes) fails to load | Mock the server-only walking preference in that test |
+
+**Part B (indoor navigation usability, §8–§12)** makes the LTB room flow understandable on first use: one start, one destination, one "Plan route" button, plain-language results, and a floor plan that shows where to start, where to change floors and where to stop.
 
 ---
 
@@ -141,7 +143,7 @@ Vertical travel uses the existing assumptions: 4.5 m per floor by lift and 12 m 
 ## 6. Not changed
 
 - Corridor geometry and `distance_pixels` from `2f8978d` are kept.
-- No frontend, API or outdoor routing code was changed.
+- Part A changed no frontend, API or outdoor routing code. Part B changes the frontend (§11) and one Python error message. Routing logic is unchanged in both parts.
 - No database change.
 
 ## 7. Questions for Jasleen before merging
@@ -149,3 +151,134 @@ Vertical travel uses the existing assumptions: 4.5 m per floor by lift and 12 m 
 1. Was removing the lift and stair edges in `2f8978d` intentional, for example with new connector positions planned?
 2. Are the restored connector nodes (`G_N14`, `G_N41`, `G_N15`–`G_N19`, `G_N33` and their counterparts on floors 1–3) still placed correctly on the new floor plans?
 3. Are `3_N37–3_N23`, `3_N67–3_N17` and the new `1_N30–1_N31` the right corridor links?
+4. Part B rewrites the indoor route view and the room pickers in `components/Map.tsx` (§9–§10). Please check that nothing you are working on locally conflicts with it.
+5. Can the four floor plans be exported again from MSIS without the print-dialog buttons (§10.4)?
+
+---
+
+# Part B: indoor navigation usability
+
+## 8. How we found the problems
+
+We ran the app locally and used `/map` as a first-time guest would, with two journeys: **Campus Centre → room 101** (start outside the LTB) and **G01 → 383** (start inside the LTB). We recorded every point where we did not know what to do next, or where the screen said something a student would not understand.
+
+## 9. Problems found in the sidebar
+
+| # | Problem | Why it matters |
+|---|---|---|
+| B1 | The "LTB room" tab held **two separate flows**: Start + LTB room, and an "Indoor-to-indoor navigation" block with its own two selects. | Two forms on one panel; users do not know which one to fill in. |
+| B2 | **"Plan route" belonged to the first flow but sat below the second flow's "Navigate between rooms" button.** | It looked like a second button of the indoor-to-indoor block. |
+| B3 | The "Start" field at the top had no effect on indoor-to-indoor routes. | Users filled in a field that was then ignored. |
+| B4 | **Every route error was shown twice** (`routeError` was rendered at two places). | This is why "No LTB route was found." appeared twice. |
+| B5 | Choosing a destination room took three controls (floor select, text filter, room select). The indoor-to-indoor selects listed all 205 rooms with internal IDs such as `(G_N61)`. | Slow to use; node IDs mean nothing to students. |
+| B6 | An outdoor-start route showed only "418.0 m"; there was **no walking time**, unlike campus building routes. | Inconsistent with R1; time is what users want. |
+| B7 | Developer wording: "Two candidate LTB entrances. Indoor connections await confirmation.", "West candidate entrance", "Entrance reference G_N01", "Stair/lift assumption range". | Reads like debug output. |
+| B8 | The result appeared below the fold (at a 900 px window height we had to scroll to find "Enter LTB"). Indoor-to-indoor jumped straight into the indoor view, but outdoor-start did not. | Two different behaviours for the same kind of action. |
+| B9 | State leaked between flows: after an indoor-to-indoor route, an outdoor-start route still showed "From G01 to 383" in its title; the indoor-to-indoor result kept the previous "West candidate entrance"; walking directions from an earlier campus-building route stayed visible after switching to "LTB room"; ticked indoor steps stayed ticked for a new route. | Users see information from an older route. |
+| B10 | Indoor-to-indoor routes said "Distance details are unavailable" although `/api/indoor-route` returns the distances. | The frontend never stored them. |
+
+## 10. Problems found in the indoor route view
+
+| # | Problem |
+|---|---|
+| B11 | The title "Floor G → 101" changed whenever another floor was selected, so it read as "from floor G". |
+| B12 | All route points were identical blue dots; nothing showed the start, the destination, or where to take the stairs or lift. |
+| B13 | Directions said "Turn around" for an ordinary sharp turn (any turn over 90°), e.g. step 2 from the west entrance. |
+| B14 | A floor change said only "Change to floor 1", without stairs or lift; a lift ride from G to 3 gave three separate "Change to floor …" steps. Every unnamed corridor point produced a "Continue straight" step. |
+| B15 | Floors passed inside a lift or stairwell (e.g. floors 1 and 2 on a lift ride to 3) got their own floor buttons, showing a plan with a single dot. |
+| B16 | Selecting a step did nothing; users had to match steps to floors themselves. |
+| B17 | All four floor-plan images (`public/ltb/Floor-*.png`, same as `LTB_indoor_graph/floorplans/`) contain **"Print" and "Cancel" buttons** in the top-left corner, captured from a print dialog. |
+| B18 | Footer text "0–50 m scale bar (14.2 pixels per metre)". |
+
+## 11. What we changed
+
+![Sidebar before and after](images/ux-sidebar-before-after.png)
+
+### 11.1 One flow in the sidebar (B1–B3, B5, B8)
+
+- The "LTB room" tab now asks **"Starting from: Outside the LTB / Inside the LTB"**.
+  - **Outside** shows the existing Start controls (building search, map point, current location).
+  - **Inside** replaces them with a **Start room** search.
+- **Destination room** is one searchable box (the existing accessible `BuildingSearch` combobox, made generic with `noun="room"`). Typing "101", "toilet" or "floor 3" filters the list.
+- There is **one "Plan route" button**, placed directly under the inputs. It calls `/api/route`, `/api/ltb-route` or `/api/indoor-route` depending on the tab and the start type, and is enabled only when the chosen journey is complete.
+- The separate "Indoor-to-indoor navigation" block and the "Navigate between rooms" button are removed.
+- Both LTB journeys now end the same way: a result card that scrolls into view, with a **View indoor route** button.
+
+### 11.2 Room names without node IDs (B5)
+
+`roomOptions()` (new, `lib/navigation/indoor.ts`) labels rooms as "101 · Floor 1". Shared names get the closest uniquely named room on the same floor, and a number when that is still not unique:
+
+![Room search](images/ux-room-search.png)
+
+- "Accessible Toilets · Ground floor · near Informal Dining"
+- "Study Area · Floor 1 · near 101 (2)" (the plans have 100 rooms called "Study Area")
+
+Every one of the 205 labels is unique and none contains a node ID (tested).
+
+### 11.3 Results in plain language (B4, B6, B7, B10)
+
+- Errors are rendered once.
+- The result card shows **walking time first**, at the student's pace ("6 min"), then "About 418 m walk · 1 floor by stairs". Logged-in students with the Accessible preference also see "Step-free route: lifts only, no stairs."
+- "West candidate entrance" → "West entrance". The entrance reference, the "Two candidate LTB entrances…" banner and the "assumption range" line are removed. Because the entrance pairing is still unverified (`mapping_verified: false`), the card keeps one honest line: "Enters the LTB at the West entrance. Entrance positions are approximate."
+- Room-to-room routes now show their time and distance. `summariseIndoorRoute()` reads either response shape.
+- The Python error "No valid indoor route exists. The same-floor corridor graph may have a missing connection." (shown even for cross-floor requests) is now "No indoor route is available between these rooms." (with "without stairs" for the accessible profile).
+
+### 11.4 No leaked state (B9)
+
+`invalidateRoutes()` now also clears outdoor directions, the indoor summary, the trip title, the selected step and ticked steps. The indoor view takes its title from the trip saved with each result, not from whichever select was last touched.
+
+### 11.5 Indoor route view (B11–B18)
+
+![Indoor view before and after](images/ux-indoor-before-after.jpg)
+
+- **Title:** "To 101 · Floor 1", with "From Campus Centre · enter at the West entrance" (or "From G01 · Ground floor").
+- **Summary:** time, distance and floor changes; the outdoor / indoor / stairs-and-lifts split is under "Distance details".
+- **Markers:** green **Start**; red destination with the room name; orange **"Side Stairway to Floor 1"** where the route leaves a floor (clickable), and **"Arrive from Ground floor"** where it continues. The extra blue dots are gone; the line is unchanged.
+- **Floors:** only floors where the user walks are listed, numbered in route order ("1. Ground floor", "2. Floor 3"). A **"Next: Floor 3 →"** button sits above the plan.
+- **Directions** (`makeIndoorDirections()`, moved to `lib/navigation/indoor.ts` and rewritten):
+  - grouped under floor headings;
+  - turns are "Bear" (25–50°), "Turn" (50–135°), "Turn sharp" (135–165°) and only "Turn around" above 165°;
+  - a run of floor changes becomes one step naming the connector: "Take the External Lift up to Floor 3";
+  - unnamed straight corridor points are skipped; named ones become "Continue past …";
+  - room numbers read as "Arrive at room 383".
+- **Selecting a step** switches to its floor and circles that point on the plan.
+- **Print-dialog buttons (B17):** the view draws a white rectangle over that corner (178 × 84 px of the 1722 × 1188 image). On the ground floor nothing else is there. On floors 1–3 it also hides a small part of the building's top-left outer wall. We tried cleaning the PNG pixels instead, but the buttons overlap thin anti-aliased wall lines and the result was worse. A clean export from MSIS is the proper fix (question 5).
+- The developer footer is replaced by "Select a step to show it on the floor plan."
+- On narrow screens the sidebar now stacks above the floor plan instead of taking half the width.
+
+### 11.6 Other
+
+- `prefer-const` lint error in `makeOutdoorDirections` (`groupBearing`) fixed; `npx eslint .` is now clean.
+- `makeOutdoorDirections` takes an optional destination name, so the outdoor part of an LTB route ends with "Continue to the LTB West entrance".
+
+## 12. Tests and verification for Part B
+
+- **New** `lib/navigation/tests/indoor.test.ts` (13 tests):
+  - left/right, bear, sharp-turn and U-turn wording;
+  - the real 101 route gives "Take the Side Stairway up to Floor 1" and no "Turn around";
+  - a G→3 lift ride gives one "Take the External Lift up to Floor 3" step;
+  - "candidate" wording is hidden;
+  - all 205 room labels are unique and contain no node IDs;
+  - both response shapes are summarised.
+- Results:
+
+| Check | Result |
+|---|---|
+| Vitest (`npm test`) | **433 passed, 28 files** |
+| Python routing tests (as in §5) | **31 passed** |
+| `npx tsc --noEmit` | passes |
+| `npx eslint .` | no problems (was 1 error on `main`) |
+
+- Manual run in Chromium (1440 × 900 and 390 × 844), local Python API and `next dev`:
+  - Campus Centre → 101;
+  - G01 → 383, then step 3 selected;
+  - room search for "accessible";
+  - switching between campus building, outside start and inside start, checking that nothing from the previous route stays.
+- **Not covered here:** the logged-in Accessible preference path (needs the database). The step-free routes themselves are covered by the Python tests in §4.
+
+### How to check in the app
+
+1. Restart the Python API and `npm run dev`, as in §5.
+2. `/map` → **LTB room** → **Outside the LTB** → Start "Campus Centre" → Destination room "101" → **Plan route**. Check the result card, then **View indoor route** → **Next: Floor 1 →**.
+3. **Inside the LTB** → Start room "G01" → Destination room "383" → **Plan route** → **View indoor route**. Select "Take the Side Stairway up to Floor 3".
+4. Destination room: type "accessible" and check that the toilets are told apart by floor and a nearby room.
