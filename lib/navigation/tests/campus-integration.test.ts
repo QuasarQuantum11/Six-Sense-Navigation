@@ -9,6 +9,11 @@ import { nodes, edges } from "./real-campus-graph";
 
 const mocks = vi.hoisted(() => ({ select: vi.fn(), from: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ db: { select: mocks.select } }));
+// route.ts reads the signed-in student's walking preference (server-only session
+// code). These checks are for guests, so use the guest default.
+vi.mock("@/lib/students/walking-preference", () => ({
+  getWalkingPreference: async () => ({ walkingSpeed: "normal", personalised: false }),
+}));
 import { POST } from "@/app/api/route/route";
 
 const byId = new Map(buildings.map((b) => [b.id, b]));
