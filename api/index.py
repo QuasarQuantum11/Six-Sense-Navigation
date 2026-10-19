@@ -447,8 +447,8 @@ def get_indoor_route(
         if not nx.has_path(routing_graph, start_node, end_node):
             return {
                 "error": (
-                    f"No valid indoor route exists. The same-floor corridor graph "
-                    "may have a missing connection."
+                    "No indoor route is available between these rooms"
+                    + (" without stairs." if walking_speed == "accessible" else ".")
                 )
             }
 
@@ -472,11 +472,7 @@ def get_indoor_route(
         return {"error": str(exc)}
 
     except nx.NetworkXNoPath:
-        return {
-            "error": (
-                f"No valid indoor route exists."
-            )
-        }
+        return {"error": "No indoor route is available between these rooms."}
 
 
 # -------------------------------------------------------------------
