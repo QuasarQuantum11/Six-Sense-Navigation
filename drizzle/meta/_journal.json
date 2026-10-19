@@ -26,8 +26,22 @@
     {
       "idx": 3,
       "version": "7",
+      "when": 1790853084078,
+      "tag": "0003_add_building_coordinates",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791008541556,
+      "tag": "0004_add_timetable_class_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
       "when": 1791343316276,
-      "tag": "0004_add_feedback_not_reviewed_status",
+      "tag": "0005_add_feedback_not_reviewed_status",
       "breakpoints": true
     }
   ]
