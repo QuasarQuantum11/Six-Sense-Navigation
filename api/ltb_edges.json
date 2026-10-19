@@ -2743,5 +2743,41 @@
     "from": "G_N62",
     "to": "G_N09",
     "distance_pixels": 62.47
+  },
+  {
+    "from": "G_N14",
+    "to": "1_N01",
+    "vertical": true,
+    "type": "lift"
+  },
+  {
+    "from": "1_N01",
+    "to": "2_N01",
+    "vertical": true,
+    "type": "lift"
+  },
+  {
+    "from": "2_N01",
+    "to": "3_N01",
+    "vertical": true,
+    "type": "lift"
+  },
+  {
+    "from": "G_N41",
+    "to": "1_N02",
+    "vertical": true,
+    "type": "lift"
+  },
+  {
+    "from": "1_N02",
+    "to": "2_N02",
+    "vertical": true,
+    "type": "lift"
+  },
+  {
+    "from": "2_N02",
+    "to": "3_N02",
+    "vertical": true,
+    "type": "lift"
   }
 ]
