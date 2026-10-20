@@ -12,9 +12,9 @@ export const feedbackStatusLabels: Record<FeedbackStatus, string> = {
   dismissed: "Dismissed",
 };
 
-// Feedback nobody has started on yet: either brand new, or left untouched past the
-// review window. The admin feedback page's "Unresolved" filter shows these.
-export const UNRESOLVED_STATUSES = ["new", "not_reviewed"] as const satisfies readonly FeedbackStatus[];
+// Feedback that is still open: everything except Resolved and Dismissed. The admin
+// feedback page's "unresolved" filter shows these.
+export const UNRESOLVED_STATUSES = ["new", "not_reviewed", "in_review"] as const satisfies readonly FeedbackStatus[];
 
 // Feedback submitted within this many days counts as "recent". Feedback still
 // "new" after this long is moved to "not_reviewed" (see lib/feedback/expire.ts).

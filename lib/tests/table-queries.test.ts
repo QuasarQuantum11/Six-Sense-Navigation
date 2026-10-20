@@ -313,23 +313,22 @@ describe("feedback table queries", () => {
     expect((await queryFeedback({ q: "guest" })).rows).toEqual([]);
   });
 
-  it("the unresolved filter shows New and Not reviewed feedback, and nothing else", async () => {
+  it("the unresolved filter hides only Resolved and Dismissed feedback", async () => {
     const { rows, total } = await queryFeedback({ unresolvedOnly: true });
 
-    expect(total).toBe(3);
-    expect(rows.map((row) => row.k).sort()).toEqual([1, 4, 6]);
-    expect(rows.map((row) => row.status).sort()).toEqual(["new", "new", "not_reviewed"]);
-    // In review, resolved and dismissed are all excluded.
-    expect(rows.some((row) => ["in_review", "resolved", "dismissed"].includes(row.status))).toBe(false);
+    expect(total).toBe(4);
+    expect(rows.map((row) => row.k).sort()).toEqual([1, 3, 4, 6]);
+    expect(rows.map((row) => row.status).sort()).toEqual(["in_review", "new", "new", "not_reviewed"]);
+    expect(rows.some((row) => ["resolved", "dismissed"].includes(row.status))).toBe(false);
   });
 
   it("combines the unresolved filter with a search, and counts what is shown", async () => {
     const ramp = await queryFeedback({ unresolvedOnly: true, q: "ramp" });
-    expect(ramp.rows.map((row) => row.k)).toEqual([1]); // carol's ramp feedback is In review, so it is left out
-    expect(ramp.total).toBe(1);
+    expect(ramp.rows.map((row) => row.k).sort()).toEqual([1, 3]); // New and In review both count
+    expect(ramp.total).toBe(2);
 
     const bob = await queryFeedback({ unresolvedOnly: true, q: "bob" });
-    expect(bob.rows.map((row) => row.k)).toEqual([6]); // bob's other feedback is Resolved
+    expect(bob.rows.map((row) => row.k)).toEqual([6]); // bob's other feedback is Resolved, so it is left out
     expect(bob.total).toBe(1);
 
     expect((await queryFeedback({ q: "bob" })).total).toBe(2); // without the filter, both of bob's appear
@@ -338,7 +337,7 @@ describe("feedback table queries", () => {
   it("keeps sorting working inside the unresolved filter", async () => {
     const { rows } = await queryFeedback({ unresolvedOnly: true, sort: { key: "status", direction: "desc" } });
 
-    expect(rows.map((row) => row.status)).toEqual(["not_reviewed", "new", "new"]);
+    expect(rows.map((row) => row.status)).toEqual(["in_review", "not_reviewed", "new", "new"]);
   });
 });
 

@@ -155,7 +155,7 @@ export default async function AllFeedbackPage({
                     {query
                       ? `No ${unresolvedOnly ? "unresolved " : ""}feedback matches “${query}”.`
                       : unresolvedOnly
-                        ? "No unresolved feedback. Everything has been reviewed."
+                        ? "No unresolved feedback. Everything is resolved or dismissed."
                         : "No feedback submitted yet."}
                   </td>
                 </tr>

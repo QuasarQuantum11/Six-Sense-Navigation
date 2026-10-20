@@ -10,8 +10,10 @@ function render(active: boolean, count: number, params = {}) {
 }
 
 describe("<UnresolvedToggle />", () => {
-  it("treats New and Not reviewed as unresolved", () => {
-    expect([...UNRESOLVED_STATUSES]).toEqual(["new", "not_reviewed"]);
+  it("treats everything except Resolved and Dismissed as unresolved", () => {
+    expect([...UNRESOLVED_STATUSES].sort()).toEqual(["in_review", "new", "not_reviewed"]);
+    expect(UNRESOLVED_STATUSES).not.toContain("resolved");
+    expect(UNRESOLVED_STATUSES).not.toContain("dismissed");
   });
 
   it("offers to turn the filter on, showing how many items it would show", () => {

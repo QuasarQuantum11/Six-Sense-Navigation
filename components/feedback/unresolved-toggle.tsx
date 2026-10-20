@@ -4,8 +4,8 @@ import { PAGE_PARAM, carriedParams, type SearchParams } from "@/lib/table-sort";
 export const STATUS_PARAM = "status";
 export const UNRESOLVED_FILTER = "unresolved";
 
-// A toggle button that limits the feedback table to unresolved items, meaning the
-// New and Not reviewed statuses (see UNRESOLVED_STATUSES in lib/feedback/status.ts).
+// A toggle button that limits the feedback table to unresolved items, meaning
+// everything except Resolved and Dismissed (see UNRESOLVED_STATUSES in lib/feedback/status.ts).
 // It is a GET form, so it works without JavaScript, and it carries over the other
 // query parameters (the current sort and search) when switched on or off.
 export function UnresolvedToggle({
@@ -33,7 +33,7 @@ export function UnresolvedToggle({
       <button
         type="submit"
         aria-pressed={active}
-        title="Feedback with the New or Not reviewed status"
+        title="Feedback that isn't Resolved or Dismissed"
         className={`rounded-md border-2 border-primary px-4 py-2 text-sm font-semibold ${
           active
             ? "bg-primary text-white hover:bg-primary-dark"
