@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 
 vi.mock("server-only", () => ({}));
 
@@ -7,6 +7,7 @@ import { paginate } from "@/lib/pagination";
 import { searchCondition } from "@/lib/table-search";
 import { orderByFor, type SortState } from "@/lib/table-sort";
 import { feedback } from "@/lib/feedback/schema";
+import { UNRESOLVED_STATUSES } from "@/lib/feedback/status";
 import { students } from "@/lib/students/schema";
 import { buildings, timetableBuildings, timetables } from "@/lib/timetables/schema";
 import {
@@ -261,9 +262,9 @@ async function seedFeedback() {
 
 const feedbackNumber = (id: string) => Number(id.slice(-3)) - 100;
 
-async function queryFeedback(options: { sort?: SortState<keyof typeof feedbackColumns>; q?: string | null; newOnly?: boolean } = {}) {
+async function queryFeedback(options: { sort?: SortState<keyof typeof feedbackColumns>; q?: string | null; unresolvedOnly?: boolean } = {}) {
   const match = searchCondition(options.q ?? null, [feedback.message, students.username]);
-  const visible = and(options.newOnly ? eq(feedback.status, "new") : undefined, match);
+  const visible = and(options.unresolvedOnly ? inArray(feedback.status, [...UNRESOLVED_STATUSES]) : undefined, match);
   const [{ total }] = await db
     .select({ total: count() })
     .from(feedback)
@@ -312,14 +313,32 @@ describe("feedback table queries", () => {
     expect((await queryFeedback({ q: "guest" })).rows).toEqual([]);
   });
 
-  it("combines the New-only filter with a search, and counts what is shown", async () => {
-    const both = await queryFeedback({ newOnly: true, q: "ramp" });
-    expect(both.rows.map((row) => row.k)).toEqual([1]); // carol's ramp feedback is not New
-    expect(both.total).toBe(1);
+  it("the unresolved filter shows New and Not reviewed feedback, and nothing else", async () => {
+    const { rows, total } = await queryFeedback({ unresolvedOnly: true });
 
-    const onlyNew = await queryFeedback({ newOnly: true });
-    expect(onlyNew.total).toBe(2);
-    expect(onlyNew.rows.every((row) => row.status === "new")).toBe(true);
+    expect(total).toBe(3);
+    expect(rows.map((row) => row.k).sort()).toEqual([1, 4, 6]);
+    expect(rows.map((row) => row.status).sort()).toEqual(["new", "new", "not_reviewed"]);
+    // In review, resolved and dismissed are all excluded.
+    expect(rows.some((row) => ["in_review", "resolved", "dismissed"].includes(row.status))).toBe(false);
+  });
+
+  it("combines the unresolved filter with a search, and counts what is shown", async () => {
+    const ramp = await queryFeedback({ unresolvedOnly: true, q: "ramp" });
+    expect(ramp.rows.map((row) => row.k)).toEqual([1]); // carol's ramp feedback is In review, so it is left out
+    expect(ramp.total).toBe(1);
+
+    const bob = await queryFeedback({ unresolvedOnly: true, q: "bob" });
+    expect(bob.rows.map((row) => row.k)).toEqual([6]); // bob's other feedback is Resolved
+    expect(bob.total).toBe(1);
+
+    expect((await queryFeedback({ q: "bob" })).total).toBe(2); // without the filter, both of bob's appear
+  });
+
+  it("keeps sorting working inside the unresolved filter", async () => {
+    const { rows } = await queryFeedback({ unresolvedOnly: true, sort: { key: "status", direction: "desc" } });
+
+    expect(rows.map((row) => row.status)).toEqual(["not_reviewed", "new", "new"]);
   });
 });
 

@@ -1,11 +1,16 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { feedback } from "@/lib/feedback/schema";
 import { students } from "@/lib/students/schema";
 import { requireAdmin } from "@/lib/auth/dal";
 import { BackLink } from "@/components/back-link";
 import { FeedbackStatusSelect } from "@/components/feedback/feedback-status-select";
-import { NewOnlyToggle, STATUS_PARAM } from "@/components/feedback/new-only-toggle";
+import {
+  STATUS_PARAM,
+  UNRESOLVED_FILTER,
+  UnresolvedToggle,
+} from "@/components/feedback/unresolved-toggle";
+import { UNRESOLVED_STATUSES } from "@/lib/feedback/status";
 import { SortableHeader } from "@/components/sortable-header";
 import { expireStaleFeedback } from "@/lib/feedback/expire";
 import { Pagination } from "@/components/pagination";
@@ -38,24 +43,26 @@ export default async function AllFeedbackPage({
   const params = await searchParams;
   const sort = parseSort(params, sortKeys);
   const statusParam = params[STATUS_PARAM];
-  const newOnly = (Array.isArray(statusParam) ? statusParam[0] : statusParam) === "new";
+  const unresolvedOnly =
+    (Array.isArray(statusParam) ? statusParam[0] : statusParam) === UNRESOLVED_FILTER;
 
   const query = parseSearch(params);
   const match = searchCondition(query, [feedback.message, students.username]);
-  const visible = and(newOnly ? eq(feedback.status, "new") : undefined, match);
+  const unresolved = inArray(feedback.status, [...UNRESOLVED_STATUSES]);
+  const visible = and(unresolvedOnly ? unresolved : undefined, match);
 
-  const [[{ total }], [newTotal]] = await Promise.all([
+  const [[{ total }], [unresolvedTotal]] = await Promise.all([
     db
       .select({ total: count() })
       .from(feedback)
       .leftJoin(students, eq(feedback.studentId, students.id))
       .where(visible),
-    // The button's count follows the search, so it shows how many New items match.
+    // The button's count follows the search, so it shows how many unresolved items match.
     db
       .select({ count: count() })
       .from(feedback)
       .leftJoin(students, eq(feedback.studentId, students.id))
-      .where(and(eq(feedback.status, "new"), match)),
+      .where(and(unresolved, match)),
   ]);
   const pageInfo = paginate(parsePage(params), parsePageSize(params), total);
 
@@ -100,9 +107,9 @@ export default async function AllFeedbackPage({
             label="Search feedback"
             hint="Searches the message and who submitted it."
           />
-          <NewOnlyToggle
-            active={newOnly}
-            count={newTotal.count}
+          <UnresolvedToggle
+            active={unresolvedOnly}
+            count={unresolvedTotal.count}
             path={PATH}
             params={params}
           />
@@ -146,9 +153,9 @@ export default async function AllFeedbackPage({
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-muted">
                     {query
-                      ? `No ${newOnly ? "New " : ""}feedback matches “${query}”.`
-                      : newOnly
-                        ? "No feedback with the New status."
+                      ? `No ${unresolvedOnly ? "unresolved " : ""}feedback matches “${query}”.`
+                      : unresolvedOnly
+                        ? "No unresolved feedback. Everything has been reviewed."
                         : "No feedback submitted yet."}
                   </td>
                 </tr>
