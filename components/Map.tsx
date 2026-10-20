@@ -9,7 +9,7 @@ import ltbEntrances from "@/api/ltb_entrances.json";
 import Link from "next/link";
 import LocationControls from "@/components/map/location-controls";
 import CrowdControls from "@/components/map/crowd-controls";
-import { type CurrentLocation } from "@/lib/navigation/geolocation";
+import { isCampusLocation, isFreshLocation, type CurrentLocation } from "@/lib/navigation/geolocation";
 import {
     floorLabel,
     makeIndoorDirections,
@@ -55,9 +55,11 @@ type OutdoorDirection = {
 // Fetches a walking route between two points from the Next.js routing API.
 async function fetchWalkingRoute(
     start: L.LatLng,
-    destination: L.LatLng
+    destination: L.LatLng,
+    signal?: AbortSignal,
 ): Promise<WalkingRoute> {
     const response = await fetch("/api/route", {
+        signal,
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -245,12 +247,14 @@ export default function Map({
     walkingSpeed = "normal",
     personalised = false,
     canViewCrowd = false,
+    trackDestination,
 }: {
     // The logged-in student's preferred pace, used for walking time estimates.
     walkingSpeed?: WalkingSpeed;
     // True when walkingSpeed comes from the student's profile.
     personalised?: boolean;
     canViewCrowd?: boolean;
+    trackDestination?: BuildingLocation;
 }) {
     // Shared Leaflet map references used by outdoor and indoor workflows.
     const mapContainer = useRef<HTMLDivElement>(null);
@@ -261,6 +265,8 @@ export default function Map({
     const ltbRouteLayerRef = useRef<L.Polyline | null>(null);
     const pickingRef = useRef<"from" | "to" | null>(null);
     const revisionRef = useRef(0);
+    const [classLocationAttempt, setClassLocationAttempt] = useState(0);
+    const [classLocationMessage, setClassLocationMessage] = useState("");
     const [panel, setPanel] = useState<"route" | "crowd">("route");
     const [searchPanelCollapsed, setSearchPanelCollapsed] = useState(false);
     const [routeType, setRouteType] = useState<"building" | "room">("building");
@@ -809,8 +815,7 @@ export default function Map({
 
     const useLocationStart = (location: CurrentLocation) => {
         const map = mapInstance.current;
-        if (!map || pinRouteLoading || loading) return;
-        invalidateRoutes();
+        if (!map || pinRouteLoading || loading) return;        invalidateRoutes();
         pickingRef.current = null;
         setPicking(null);
         setMapStart(false);
@@ -828,6 +833,90 @@ export default function Map({
         setStartSelected(true);
         panToPoint(map, point);
     };
+
+    // A class route takes one browser location snapshot; coordinates stay in memory.
+    useEffect(() => {
+        const map = mapInstance.current;
+        if (!trackDestination || !map) return;
+        let active = true;
+        const controller = new AbortController();
+        const onVisibility = () => {
+            if (!document.hidden) return;
+            active = false;
+            controller.abort();
+            setPinRouteLoading(false);
+            setClassLocationMessage("Location request stopped while the page was hidden. Retry when ready.");
+        };
+        document.addEventListener("visibilitychange", onVisibility);
+        // Wait for Leaflet's mounted container to paint before fitting a class route.
+        const frame = requestAnimationFrame(() => {
+            if (!active) return;
+            invalidateRoutes();
+            setRouteType("building");
+            setToBuilding(trackDestination);
+            const entrance = trackDestination.id === "ltb"
+                ? ltbEntrances.entrances.find(entry => entry.id === ltbEntrances.building_search_entrance)
+                : null;
+            const point: L.LatLngTuple = entrance
+                ? [entrance.latitude, entrance.longitude]
+                : [trackDestination.latitude, trackDestination.longitude];
+            if (endMarkerRef.current) endMarkerRef.current.setLatLng(point);
+            else endMarkerRef.current = L.marker(point).addTo(map);
+            endMarkerRef.current.bindTooltip(trackDestination.name);
+            panToPoint(map, point);
+            const revision = revisionRef.current;
+            const fail = (message: string) => {
+                if (!active) return;
+                setClassLocationMessage(message);
+                setPinRouteLoading(false);
+            };
+            if (!window.isSecureContext || !navigator.geolocation) {
+                fail("Location requires HTTPS or localhost and a supported browser. Choose your start on the map.");
+                return;
+            }
+            setClassLocationMessage("Waiting for location permission and a current position…");
+            setPinRouteLoading(true);
+            navigator.geolocation.getCurrentPosition(async position => {
+                if (!active) return;
+                if (revision !== revisionRef.current) {
+                    setPinRouteLoading(false);
+                    return;
+                }
+                const location: CurrentLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy, timestamp: position.timestamp };                if (!isFreshLocation(location)) return fail("A recent location is unavailable. Retry or choose a start on the map.");
+                if (!isCampusLocation(location)) return fail("Your location is outside the campus map. Choose a start on the map.");
+                const start: L.LatLngTuple = [location.latitude, location.longitude];
+                if (startMarkerRef.current) startMarkerRef.current.setLatLng(start);
+                else startMarkerRef.current = L.marker(start).addTo(map);
+                startMarkerRef.current.bindTooltip("Start: current location snapshot");
+                setFromBuilding(null);
+                setLocationStart(true);
+                setStartSelected(true);
+                setMapStart(false);
+                setFromLocationKey(key => key + 1);
+                setClassLocationMessage(`Using one location reading (accuracy approximately ${Math.round(location.accuracy)} m). Route to ${trackDestination.name}.`);
+                try {
+                    const { route, distanceMeters } = await fetchWalkingRoute(L.latLng(start), L.latLng(point), controller.signal);
+                    if (!active || revision !== revisionRef.current) return;
+                    drawRoute(map, routeLayerRef, route);
+                    setPinRouteDistance(distanceMeters);
+                    setOutdoorDirections(makeOutdoorDirections(route, trackDestination.name));
+                } catch (error) {
+                    if (active && revision === revisionRef.current) setPinRouteError(error instanceof Error ? error.message : "Could not calculate the class route.");
+                } finally {
+                    if (active) setPinRouteLoading(false);
+                }
+            }, error => fail(error.code === 1
+                ? "Location permission was denied. Allow access and retry, or choose a start on the map."
+                : "Location is unavailable or timed out. Retry or choose a start on the map."),
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+        });
+        return () => {
+            active = false;
+            cancelAnimationFrame(frame);
+            controller.abort();
+            document.removeEventListener("visibilitychange", onVisibility);
+        };
+    }, [trackDestination, classLocationAttempt, invalidateRoutes]);
 
     // One "Plan route" button serves all three journeys.
     const insideStart = routeType === "room" && ltbStart === "inside";
@@ -874,6 +963,10 @@ export default function Map({
                     </div>
                 </header>
                 <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                    {trackDestination && <div className="mb-4 space-y-2 rounded-lg bg-blue-50 p-3">
+                        <p role="status" className="text-sm text-blue-900">{classLocationMessage}</p>
+                        <button type="button" disabled={pinRouteLoading} onClick={() => setClassLocationAttempt(attempt => attempt + 1)} className="text-sm font-semibold underline disabled:opacity-50">Retry current location</button>
+                    </div>}
                     <div hidden={panel !== "route"}>
                         <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1" aria-label="Destination type">
                             {([ ["building", "Campus building"], ["room", "LTB room"] ] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={routeType === value} onClick={() => {
@@ -921,7 +1014,7 @@ export default function Map({
                                 />
                             </div>
                             <div hidden={routeType !== "building"}>
-                                <BuildingSearch key={`to-${buildingInputsKey}`} label="Destination" placeholder="Search a destination building" buildings={buildings} selectedLabel={mapEnd ? "Selected map point" : undefined} onSelect={building => chooseBuilding("to", building)} onClear={() => clearBuilding("to")} />
+                                <BuildingSearch key={`to-${buildingInputsKey}`} label="Destination" placeholder="Search a destination building" buildings={buildings} selectedLabel={mapEnd ? "Selected map point" : toBuilding?.name} onSelect={building => chooseBuilding("to", building)} onClear={() => clearBuilding("to")} />
                                 <button type="button" onClick={() => beginPicking("to")} className="mt-2 text-xs font-medium text-blue-800 underline">Choose destination on map</button>
                             </div>
                             <div hidden={routeType !== "room"}>

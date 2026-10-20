@@ -75,7 +75,11 @@ export default async function StudentPage({
           </BackLink>
         </div>
 
-        <TimetableSelector studentId={id} timetables={timetableOptions} />
+        <TimetableSelector
+          studentId={id}
+          timetables={timetableOptions}
+          canTrack={session.role === "student" && session.userId === id}
+        />
         {participationStatus && <ParticipationForm key={JSON.stringify([participationStatus.timetableId, participationStatus.expiresAt, participationStatus.available, timetableOptions.map(t => t.id)])} timetables={timetableOptions.map(t => ({ id: t.id, name: t.name }))} initialStatus={participationStatus} />}
       </main>
     </div>

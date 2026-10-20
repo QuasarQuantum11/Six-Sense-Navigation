@@ -35,6 +35,23 @@ npm run dev
 Open <http://localhost:3000>. The Python API documentation is available at
 <http://localhost:8000/docs>.
 
+## Track a class
+
+Students can import, review and save an Allocate+ `.xls` or `.xlsx` timetable
+from **Profile**, which also displays their saved timetables. Each saved class
+has a **Track class** button, available regardless of the current date or time.
+Scheduled days, times and teaching dates remain visible for reference.
+
+**Track class** opens the full map page with the class destination selected
+and requests one browser location reading.
+The route leads to the supported class building entrance using the student's
+walking speed; it does not automatically recalculate as the student moves.
+If permission is denied or the position is outside campus, choose a start on
+the map and plan the route manually. **Retry current location** requests a new
+reading. Coordinates remain in memory and are sent to routing only when needed.
+The existing **Crowd estimates** tab remains available on the class map;
+those estimates are not live counts and do not change the walking route.
+
 ## Administrator registration
 
 Student sign-up is available at `/signup`. Administrator sign-up uses

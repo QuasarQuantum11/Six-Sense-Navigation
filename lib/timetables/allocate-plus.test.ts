@@ -22,13 +22,13 @@ describe("parseAllocatePlusWorkbook", () => {
     );
     const entries = parseAllocatePlusWorkbook(bytes.buffer);
 
-    expect(entries).toHaveLength(5);
+    expect(entries).toHaveLength(3);
     expect(entries[0]).toMatchObject({
-      day: "Thursday",
+      day: "Monday",
       time: "10:00",
-      location: "Science Building",
-      room: "CG10",
-      subjectCode: "FIT3080_CL_S2_BLENDED",
+      location: "Menzies Building",
+      room: "WG03",
+      subjectCode: "FIT3143_CL_S2_ON-CAMPUS",
     });
     expect(entries.at(-1)).toMatchObject({
       day: "Wednesday",

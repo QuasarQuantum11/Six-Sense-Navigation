@@ -109,6 +109,7 @@ export async function saveTimetable(
   });
 
   revalidatePath(`/students/${studentId}`);
+  revalidatePath("/profile");
 }
 
 export async function deleteTimetable(studentId: string, timetableId: string) {
@@ -125,4 +126,5 @@ export async function deleteTimetable(studentId: string, timetableId: string) {
   await db.delete(timetables).where(eq(timetables.id, timetableId));
 
   revalidatePath(`/students/${studentId}`);
+  revalidatePath("/profile");
 }

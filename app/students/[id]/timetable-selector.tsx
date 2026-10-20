@@ -3,6 +3,7 @@
 import { ChangeEvent, useState, useTransition } from "react";
 import { deleteTimetable, saveTimetable } from "./timetable-actions";
 import { parseAllocatePlusWorkbook } from "@/lib/timetables/allocate-plus";
+import TrackClass from "@/components/map/track-class";
 
 type Stop = {
   position: number;
@@ -65,9 +66,11 @@ function formatTime(time: string | null) {
 export function TimetableSelector({
   studentId,
   timetables = [],
+  canTrack = false,
 }: {
   studentId: string;
   timetables?: TimetableOption[];
+  canTrack?: boolean;
 }) {
   const [timetableName, setTimetableName] = useState("My Timetable");
   const [manualRows, setManualRows] = useState<ManualClassRow[]>([
@@ -185,21 +188,22 @@ export function TimetableSelector({
                     Delete
                   </button>
                 </div>
-                <ul className="space-y-1 text-sm text-foreground">
+                <ul className="divide-y divide-slate-200 text-sm text-foreground">
                   {[...timetable.stops]
                     .sort((a, b) => a.position - b.position)
                     .map((stop) => (
                       <li
                         key={`${timetable.id}-${stop.position}`}
-                        className="grid grid-cols-[6rem_4rem_1fr] gap-x-2 gap-y-1"
+                        className={`grid gap-x-4 gap-y-1 py-4 ${canTrack ? "grid-cols-[minmax(0,1fr)_7rem]" : "grid-cols-1"}`}
                       >
+                        <div className="col-start-1 row-start-1 grid min-w-0 grid-cols-[6rem_4rem_minmax(0,1fr)] content-start gap-x-2 gap-y-1">
                         <span className="w-24 font-medium">
                           {stop.dayOfWeek ?? "—"}
                         </span>
                         <span className="w-16">
                           {formatTime(stop.startTime)}
                         </span>
-                        <span>
+                        <span className="col-span-3 sm:col-span-1">
                           {stop.buildingName}{stop.room ? `, ${stop.room}` : ""}
                         </span>
                         {(stop.subjectCode || stop.subjectDescription || stop.activity) && (
@@ -214,6 +218,8 @@ export function TimetableSelector({
                             Classes: {stop.classDates}
                           </span>
                         )}
+                        </div>
+                        {canTrack && <TrackClass entry={stop} />}
                       </li>
                     ))}
                 </ul>
