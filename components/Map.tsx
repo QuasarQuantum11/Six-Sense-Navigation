@@ -1041,6 +1041,7 @@ export default function Map({
                                         {formatWalkingTime(pinRouteDistance === 0 ? 0 : estimateWalkingMinutes(pinRouteDistance, walkingSpeed))}
                                     </p>
                                     <p className="text-sm text-blue-900">{formatDistance(pinRouteDistance)} walk</p>
+                                    {walkingSpeed === "accessible" && <p className="mt-2 text-xs text-blue-900">Step-free route candidate. May use campus service links. Surfaces, slopes, kerbs and the short connections to the walking network are not verified.</p>}
                                     {pinRouteDistance === 0 && <p className="text-sm text-blue-900">You are already at the destination.</p>}
                                     <PaceNote walkingSpeed={walkingSpeed} personalised={personalised} />
                                 </div>

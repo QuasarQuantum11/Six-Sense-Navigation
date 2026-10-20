@@ -44,6 +44,7 @@ type Entrance = {
 };
 
 type Coordinate = [number, number];
+type RoutePath = { nodeIds: number[]; edges: Edge[]; distance: number; cost: number };
 
 const BUILDING_MATCH_DISTANCE = 12;
 const MAX_CONNECTOR_DISTANCE = 100;
@@ -242,13 +243,13 @@ function findPath(
   nodes: Node[],
   edges: Edge[],
   profile: "standard" | "wheelchair" = "standard",
-): { nodeIds: number[]; distance: number } | null {
+): RoutePath | null {
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
 
   if (!nodeMap.has(startId) || !nodeMap.has(endId)) return null;
-  if (startId === endId) return { nodeIds: [startId], distance: 0 };
+  if (startId === endId) return { nodeIds: [startId], edges: [], distance: 0, cost: 0 };
 
-  const adjacency = new Map<number, { to: number; cost: number }[]>();
+  const adjacency = new Map<number, { to: number; cost: number; edge: Edge }[]>();
   for (const node of nodes) adjacency.set(node.id, []);
 
   for (const edge of edges) {
@@ -258,6 +259,7 @@ function findPath(
       highway: edge.highway,
       wheelchairAccessible: edge.wheelchairAccessible,
       hasSteps: edge.hasSteps,
+      maxspeed: edge.maxspeed,
     };
     if (
       profile === "wheelchair" &&
@@ -273,14 +275,15 @@ function findPath(
       : baseCost;
     if (!Number.isFinite(cost) || cost <= 0) continue;
 
-    adjacency.get(edge.fromNode)!.push({ to: edge.toNode, cost });
+    adjacency.get(edge.fromNode)!.push({ to: edge.toNode, cost, edge });
     if (!edge.oneway) {
-      adjacency.get(edge.toNode)!.push({ to: edge.fromNode, cost });
+      adjacency.get(edge.toNode)!.push({ to: edge.fromNode, cost, edge });
     }
   }
 
   const distances = new Map<number, number>();
   const previous = new Map<number, number>();
+  const previousEdge = new Map<number, Edge>();
   const unvisited = new Set<number>();
   for (const node of nodes) {
     distances.set(node.id, Infinity);
@@ -309,6 +312,7 @@ function findPath(
       if (candidate < (distances.get(neighbour.to) ?? Infinity)) {
         distances.set(neighbour.to, candidate);
         previous.set(neighbour.to, currentId);
+        previousEdge.set(neighbour.to, neighbour.edge);
       }
     }
   }
@@ -317,35 +321,24 @@ function findPath(
   if (distance === undefined || !Number.isFinite(distance)) return null;
 
   const nodeIds = [endId];
+  const pathEdges: Edge[] = [];
   let currentNodeId = endId;
   while (currentNodeId !== startId) {
     const previousNodeId = previous.get(currentNodeId);
     if (previousNodeId === undefined) return null;
+    pathEdges.unshift(previousEdge.get(currentNodeId)!);
     nodeIds.unshift(previousNodeId);
     currentNodeId = previousNodeId;
   }
 
-  return { nodeIds, distance };
+  return { nodeIds, edges: pathEdges, distance: pathEdges.reduce((sum, edge) => sum + edge.length, 0), cost: distance };
 }
 
 function buildRouteCoordinates(
-  path: { nodeIds: number[]; distance: number },
+  path: RoutePath,
   nodes: Node[],
-  edges: Edge[],
 ): Coordinate[] {
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-  const edgeMap = new Map<string, Edge>();
-  const cost = (edge: Edge) => edge.weight != null && edge.weight > 0 ? edge.weight : edge.length;
-  const setEdge = (from: number, to: number, edge: Edge) => {
-    const key = `${from}-${to}`;
-    const previous = edgeMap.get(key);
-    if (!previous || cost(edge) < cost(previous)) edgeMap.set(key, edge);
-  };
-
-  for (const edge of edges) {
-    setEdge(edge.fromNode, edge.toNode, edge);
-    if (!edge.oneway) setEdge(edge.toNode, edge.fromNode, edge);
-  }
 
   const coordinates: Coordinate[] = [];
   for (let i = 0; i < path.nodeIds.length; i++) {
@@ -358,7 +351,7 @@ function buildRouteCoordinates(
 
     const previousNode = nodeMap.get(path.nodeIds[i - 1]);
     if (!previousNode) continue;
-    const edge = edgeMap.get(`${previousNode.id}-${node.id}`);
+    const edge = path.edges[i - 1];
 
     if (edge) {
       const from = edge.fromNode === previousNode.id ? previousNode : node;
@@ -390,10 +383,19 @@ async function calculateRoute(
   const [storedNodes, storedEdges] = await Promise.all([
     db.select().from(navigationNodes), db.select().from(navigationEdges),
   ]);
-  const { nodes, edges } = publicOutdoorGraph(storedNodes as Node[], storedEdges as Edge[]);
+  const publicGraph = publicOutdoorGraph(storedNodes as Node[], storedEdges as Edge[]);
+  // Snap to a connected wheelchair-candidate network, not a stair-only node
+  // that is subsequently disconnected by the accessibility filter.
+  const { nodes, edges } = profile === "wheelchair"
+    ? publicOutdoorGraph(publicGraph.nodes, publicGraph.edges.filter(edge =>
+      isWheelchairAccessibleEdge(edge) && Number.isFinite(edge.weight != null && edge.weight > 0 ? edge.weight : edge.length)
+      && (edge.weight != null && edge.weight > 0 ? edge.weight : edge.length) > 0))
+    : publicGraph;
 
   if (nodes.length === 0 || edges.length === 0) {
-    throw new RouteError("The walking network is unavailable. Please try again later.", 503);
+    throw new RouteError(profile === "wheelchair"
+      ? "No connected wheelchair-candidate network is available in the current map data."
+      : "The walking network is unavailable. Please try again later.", 503);
   }
 
   const startEntrances = getEntrances(startLatitude, startLongitude);
@@ -404,6 +406,7 @@ async function calculateRoute(
 
   let bestRoute: Coordinate[] | null = null;
   let bestDistance = Infinity;
+  let bestCost = Infinity;
   let startConnected = false;
   let destinationConnected = false;
 
@@ -430,7 +433,7 @@ async function calculateRoute(
       const path = findPath(startNode.id, endNode.id, nodes, edges, profile);
       if (!path) continue;
 
-      const route = buildRouteCoordinates(path, nodes, edges);
+      const route = buildRouteCoordinates(path, nodes);
       if (route.length === 0) continue;
       // Include the short, estimated connectors already counted in distance.
       const startPoint: Coordinate = [start.latitude, start.longitude];
@@ -455,7 +458,9 @@ async function calculateRoute(
 
       const totalDistance = path.distance + connectorDistance;
 
-      if (totalDistance < bestDistance) {
+      const totalCost = path.cost + connectorDistance;
+      if (totalCost < bestCost) {
+        bestCost = totalCost;
         bestDistance = totalDistance;
         bestRoute = route;
       }
@@ -464,9 +469,13 @@ async function calculateRoute(
 
   if (!bestRoute) {
     if (!startConnected || !destinationConnected) {
-      throw new RouteError("Choose a start and destination within 100 metres of a campus walking path.", 422);
+      throw new RouteError(profile === "wheelchair"
+        ? "No wheelchair-candidate connection was found within 100 metres of the start or destination. Choose a nearby step-free path; accessibility data may be incomplete."
+        : "Choose a start and destination within 100 metres of a campus walking path.", 422);
     }
-    throw new RouteError("No public walking route connects these locations. Please choose another start or destination.", 422);
+    throw new RouteError(profile === "wheelchair"
+      ? "No wheelchair-candidate route connects these locations in the current map data."
+      : "No public walking route connects these locations. Please choose another start or destination.", 422);
   }
 
   return {

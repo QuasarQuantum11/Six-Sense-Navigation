@@ -50,7 +50,11 @@ If permission is denied or the position is outside campus, choose a start on
 the map and plan the route manually. **Retry current location** requests a new
 reading. Coordinates remain in memory and are sent to routing only when needed.
 The existing **Crowd estimates** tab remains available on the class map;
-those estimates are not live counts and do not change the walking route.
+those estimates are not live counts. Routing uses the existing Neon edge
+weights, falling back to path length, without adding separate crowd penalties.
+
+Wheelchair routing uses the nodes, edges and accessibility flags already in
+Neon. No graph import is needed. See [wheelchair routing policy](docs/wheelchair-routing.md).
 
 ## Administrator registration
 

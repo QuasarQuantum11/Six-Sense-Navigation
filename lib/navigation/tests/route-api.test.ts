@@ -88,6 +88,41 @@ describe("private coordinate routing", () => {
       ],
     });
   });
+  it("connects wheelchair routes through campus service links", async () => {
+    mocks.getWalkingPreference.mockResolvedValueOnce({ walkingSpeed: "accessible", personalised: true });
+    const graph = accessibilityGraph();
+    graph.edges = graph.edges.filter(edge => edge.fromNode !== 1 || edge.toNode !== 2);
+    graph.edges.find(edge => edge.fromNode === 1)!.highway = "service";
+    mocks.from.mockResolvedValueOnce(graph.nodes).mockResolvedValueOnce(graph.edges);
+    const result = await POST(request(coordinates));
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ distanceMeters: 150 });
+  });
+  it("preserves stored Neon weights without applying separate crowd multipliers", async () => {
+    const graph = accessibilityGraph();
+    graph.edges = graph.edges.map(edge => ({ ...edge, highway: "footway", hasSteps: false, wheelchairAccessible: true,
+      length: edge.fromNode === 1 && edge.toNode === 3 ? 50 : 100,
+      weight: edge.fromNode === 1 && edge.toNode === 3 ? 1000 : 30 }));
+    mocks.from.mockResolvedValueOnce(graph.nodes).mockResolvedValueOnce(graph.edges);
+    const result = await POST(request(coordinates));
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ distanceMeters: 200, route: [
+      [coordinates.startLatitude, coordinates.startLongitude], [-37.9085, 145.1385],
+      [coordinates.destinationLatitude, coordinates.destinationLongitude],
+    ] });
+  });
+  it("snaps to a connected eligible node instead of the closest stair-only node", async () => {
+    mocks.getWalkingPreference.mockResolvedValueOnce({ walkingSpeed: "accessible", personalised: true });
+    const graph = accessibilityGraph();
+    graph.edges = graph.edges.filter(edge => !(edge.fromNode === 1 && edge.toNode === 3));
+    mocks.from.mockResolvedValueOnce(graph.nodes).mockResolvedValueOnce(graph.edges);
+    const result = await POST(request(coordinates));
+    expect(result.status).toBe(200);
+    const data = await result.json();
+    expect(data.route[0]).toEqual([coordinates.startLatitude, coordinates.startLongitude]);
+    expect(data.route[1]).toEqual([-37.9085, 145.1385]);
+    expect(data.distanceMeters).toBeGreaterThan(30);
+  });
   it("returns zero distance for identical locations without reading the graph", async () => {
     const result = await POST(request({ ...coordinates, destinationLatitude: coordinates.startLatitude, destinationLongitude: coordinates.startLongitude }));
     expect(result.status).toBe(200);

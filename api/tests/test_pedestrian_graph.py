@@ -67,7 +67,7 @@ class PedestrianGraphTests(unittest.TestCase):
         policy = json.loads((ROOT / "lib/navigation/pedestrian-restrictions.json").read_text())
         expected = sorted({(int(u), int(v)) for u, v, data in RAW_GRAPH.edges(data=True) if not is_pedestrian_accessible(data)})
         self.assertEqual(expected, [tuple(edge) for edge in policy["blockedEdges"]])
-        self.assertEqual(policy["sha256"], hashlib.sha256((ROOT / policy["source"]).read_bytes()).hexdigest())
+        self.assertEqual(policy["sha256"], hashlib.sha256((ROOT / policy["source"]).read_bytes().replace(b"\r\n", b"\n")).hexdigest())
 
     def test_no_closed_edges_remain(self):
         self.assertGreater(SUMMARY["removed_edges"], 0)

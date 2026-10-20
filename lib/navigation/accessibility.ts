@@ -2,6 +2,7 @@ export type WheelchairEdge = {
   highway?: string | null;
   wheelchairAccessible?: boolean | null;
   hasSteps?: boolean | null;
+  maxspeed?: string | null;
 };
 
 const roadHighways = new Set([
@@ -30,6 +31,10 @@ export function isRoadHighway(highway?: string | null): boolean {
   return roadHighways.has(normalized) || normalized.includes("road");
 }
 
+function highwayValues(highway?: string | null): string[] {
+  return (highway?.toLowerCase().match(/[a-z_]+/g) ?? []);
+}
+
 export function isWheelchairAccessibleEdge(
   edge: WheelchairEdge | null | undefined,
 ): boolean {
@@ -41,15 +46,21 @@ export function isWheelchairAccessibleEdge(
     return false;
   }
 
-  if (edge.hasSteps) {
+  const highways = highwayValues(edge.highway);
+  if (edge.hasSteps || highways.includes("steps")) {
     return false;
   }
 
-  if (isRoadHighway(edge.highway)) {
+  // These are route candidates, not a certification of surface, slope or kerbs.
+  // Campus service links often connect footpaths and must not all be discarded.
+  const speeds = edge.maxspeed?.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  const speedKmh = speeds.map(speed => /mph/i.test(edge.maxspeed ?? "") ? speed * 1.609344 : speed);
+  return highways.length > 0 && highways.every(highway => {
+    if (["footway", "path", "pedestrian", "cycleway", "living_street"].includes(highway)) return true;
+    if (highway === "service") return !speedKmh.some(speed => speed > 20);
+    if (["residential", "unclassified", "road"].includes(highway)) return edge.wheelchairAccessible === true;
     return false;
-  }
-
-  return true;
+  });
 }
 
 export function getWheelchairRouteCost(

@@ -137,7 +137,9 @@ export default function ProfileForm({
               </option>
             </select>
             <p className="mt-1 text-xs text-muted">
-              Used to estimate your walking time for routes on the map.
+              Used to estimate your walking time for routes on the map. Accessible
+              also avoids stairs and known inaccessible paths. Outdoor routes
+              are step-free candidates; surfaces, slopes and kerbs are unverified.
             </p>
           </div>
 

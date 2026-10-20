@@ -34,7 +34,7 @@ describe("real-campus route handler versus independent NetworkX reference", () =
   it("uses current source data and the same filtered graph as the Python importer", () => {
     for (const [path, hash] of Object.entries(reference.sha256)) {
       const bytes = readFileSync(new URL(`../../../${path}`, import.meta.url));
-      expect(createHash("sha256").update(bytes).digest("hex"), `regenerate reference for ${path}`).toBe(hash);
+      expect(createHash("sha256").update(bytes.toString("utf8").replace(/\r\n/g, "\n")).digest("hex"), `regenerate reference for ${path}`).toBe(hash);
     }
     expect(policy.sha256).toBe(reference.sha256["components/monash_graph.graphml"]);
     const publicGraph = publicOutdoorGraph(nodes, edges);
