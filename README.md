@@ -79,6 +79,37 @@ npm run db:migrate
 Optional example data can be added with `npm run db:seed`. Both commands modify
 the configured database.
 
+### Archived database dump
+
+`database/six-sense-navigation-dump.sql` is a full `pg_dump` (PostgreSQL 17) of
+the project's Neon database, taken on 3 November 2026 for archiving. It contains
+the schema, enum types, indexes and data: the outdoor navigation graph, the
+buildings, and the demo student, admin, timetable and feedback records. All
+accounts are test accounts; their passwords are stored as scrypt hashes. The
+Neon-only `neon_auth` schema is included but empty and is not used by the app.
+
+To rebuild the database on any PostgreSQL 17 server (local or a new Neon
+database), create an empty database and load the dump with `psql` 17.6 or
+later:
+
+```bash
+createdb six_sense_navigation
+psql -d six_sense_navigation -v ON_ERROR_STOP=1 -f database/six-sense-navigation-dump.sql
+```
+
+Then set `DATABASE_URL` and `DATABASE_URL_UNPOOLED` in `.env` to that database
+and start the app as described in [Local setup](#local-setup). Do not run
+`npm run db:migrate`, `npm run db:seed` or `npm run db:import-navigation` after
+restoring; the dump already includes the schema and data. If an older `psql`
+rejects the `\restrict` and `\unrestrict` lines at the start and end of the
+file, delete those two lines and load it again.
+
+To create a fresh dump, use the unpooled connection string:
+
+```bash
+pg_dump "$DATABASE_URL_UNPOOLED" --no-owner --no-privileges -f database/six-sense-navigation-dump.sql
+```
+
 ## LTB indoor distance
 
 The `/api/indoor-route` and `/api/ltb-route` responses report the travel
